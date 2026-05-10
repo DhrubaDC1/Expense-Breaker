@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validation Blueprints ---
+
+    function isValidTransaction(data) {
+      return data.amount is number && data.amount > 0
+        && data.currency is string && data.currency.size() == 3
+        && data.category is string && data.category.size() <= 100
+        && data.date is string && data.date.size() <= 20
+        && data.type in ['expense', 'income']
+        && (data.note == null || (data.note is string && data.note.size() <= 1000));
+    }
+
+    function isValidBudget(data) {
+      return data.amount is number && data.amount >= 0
+        && data.categoryId is string && data.categoryId.size() <= 64
+        && data.month is string && data.month.matches('^\\d{4}-\\d{2}$');
+    }
+
+    function isValidGoal(data) {
+      return data.name is string && data.name.size() <= 100
+        && data.targetAmount is number && data.targetAmount > 0
+        && data.currentAmount is number && data.currentAmount >= 0
+        && data.deadline is string && data.deadline.size() <= 20;
+    }
+
+    // --- Rules ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      
+      match /transactions/{transactionId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(transactionId);
+        
+        allow create: if isOwner(userId) 
+          && isValidId(transactionId)
+          && incoming().userId == userId
+          && isValidTransaction(incoming())
+          && incoming().keys().hasAll(['amount', 'currency', 'category', 'date', 'type', 'userId'])
+          && incoming().keys().size() >= 6;
+          
+        allow update: if isOwner(userId)
+          && isValidId(transactionId)
+          && isValidTransaction(incoming())
+          && incoming().userId == existing().userId
+          && incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'category', 'date', 'note', 'type']);
+          
+        allow delete: if isOwner(userId) && isValidId(transactionId);
+      }
+
+      match /budgets/{budgetId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidId(budgetId) && isValidBudget(incoming());
+      }
+
+      match /goals/{goalId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidId(goalId) && isValidGoal(incoming());
+      }
+    }
+
+    match /spaces/{spaceId} {
+      function isMember() {
+        return isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/spaces/$(spaceId)).data.members;
+      }
+
+      allow get: if isSignedIn() && request.auth.uid in existing().members;
+      allow list: if isSignedIn() && request.auth.uid in resource.data.members;
+
+      // Creation of a space (first user)
+      allow create: if isSignedIn() 
+        && isValidId(spaceId)
+        && incoming().members.size() > 0
+        && request.auth.uid in incoming().members;
+
+      match /transactions/{transactionId} {
+        allow read: if isMember();
+        allow create: if isMember() 
+          && isValidId(transactionId)
+          && isValidTransaction(incoming());
+        allow update: if isMember()
+          && isValidId(transactionId)
+          && isValidTransaction(incoming())
+          && incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'category', 'date', 'note', 'type']);
+        allow delete: if isMember() && isValidId(transactionId);
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "ClearLedger",
+  "description": "Intelligent personal and collaborative expense management with a premium glassmorphic UI and AI-powered insights.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "AI-powered OCR",
+    "Bento Dashboard",
+    "Multi-currency support"
+  ]
+}

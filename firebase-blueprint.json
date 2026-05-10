@@ -1,0 +1,79 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A single financial transaction unit.",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number", "description": "Transaction amount" },
+        "currency": { "type": "string", "description": "ISO currency code" },
+        "exchangeRateAtEntry": { "type": "number" },
+        "category": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "note": { "type": "string" },
+        "type": { "enum": ["expense", "income"] },
+        "userId": { "type": "string" },
+        "isShared": { "type": "boolean" },
+        "spaceId": { "type": "string" }
+      },
+      "required": ["amount", "currency", "category", "date", "type", "userId"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "Monthly budget for a category.",
+      "type": "object",
+      "properties": {
+        "categoryId": { "type": "string" },
+        "amount": { "type": "number" },
+        "month": { "type": "string", "description": "YYYY-MM" },
+        "userId": { "type": "string" }
+      },
+      "required": ["categoryId", "amount", "month", "userId"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "Financial target.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "targetAmount": { "type": "number" },
+        "currentAmount": { "type": "number" },
+        "deadline": { "type": "string", "format": "date" },
+        "userId": { "type": "string" }
+      },
+      "required": ["name", "targetAmount", "currentAmount", "deadline", "userId"]
+    },
+    "SharedSpace": {
+      "title": "SharedSpace",
+      "description": "Collaborative space for expenses.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "members": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["name", "members"]
+    }
+  },
+  "firestore": {
+    "users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Personal transactions"
+    },
+    "users/{userId}/budgets/{budgetId}": {
+      "schema": "Budget",
+      "description": "User budgets"
+    },
+    "users/{userId}/goals/{goalId}": {
+      "schema": "Goal",
+      "description": "User goals"
+    },
+    "spaces/{spaceId}": {
+      "schema": "SharedSpace",
+      "description": "Collaborative group settings"
+    },
+    "spaces/{spaceId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Shared transactions"
+    }
+  }
+}
