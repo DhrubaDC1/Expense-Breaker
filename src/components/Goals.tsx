@@ -8,7 +8,7 @@ export default function Goals() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold">Financial Goals</h2>
           <p className="text-sm text-white/40 font-mono uppercase tracking-widest mt-1">Transform your future</p>
@@ -71,8 +71,8 @@ export default function Goals() {
         )}
       </div>
 
-      <div className="glass-panel p-8 bg-emerald-500/5 border-emerald-500/10 flex items-center justify-between">
-        <div className="flex items-center gap-6">
+      <div className="glass-panel p-6 md:p-8 bg-emerald-500/5 border-emerald-500/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
           <div className="p-4 rounded-3xl bg-emerald-500/20 text-emerald-400">
              <Sparkles className="w-8 h-8" />
           </div>
@@ -81,7 +81,7 @@ export default function Goals() {
             <p className="text-sm text-white/60">Based on your spending, we found you could save an extra 1,500 BDT this month by reducing 'Entertainment' expenses.</p>
           </div>
         </div>
-        <button className="px-6 py-3 bg-emerald-500 text-black font-bold rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20">Apply Plan</button>
+        <button className="w-full md:w-auto px-6 py-3 bg-emerald-500 text-black font-bold rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20">Apply Plan</button>
       </div>
     </div>
   );

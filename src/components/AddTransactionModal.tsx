@@ -80,7 +80,7 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-lg glass-panel p-8 shadow-2xl overflow-hidden"
+          className="relative w-full max-w-lg glass-panel p-6 sm:p-8 shadow-2xl overflow-hidden"
         >
           <div className="flex justify-between items-center mb-8">
             <div>
@@ -120,12 +120,12 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.00"
                 autoFocus
-                className="w-full bg-transparent text-6xl font-bold border-none outline-none text-center placeholder:text-white/[0.02] text-white font-mono"
+                className="w-full bg-transparent text-5xl sm:text-6xl font-bold border-none outline-none text-center placeholder:text-white/[0.02] text-white font-mono"
               />
               <span className="absolute right-0 bottom-2 text-xs text-gray-600 font-bold uppercase tracking-widest">{currency}</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div className="space-y-3">
                 <label className="section-label mb-0">System Category</label>
                 <select
@@ -160,12 +160,12 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
               />
             </div>
 
-            <div className="flex gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isScanning}
-                className="flex-1 glass-button font-bold uppercase tracking-[0.2em] text-[10px] border-emerald-500/20 text-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10"
+                className="flex-1 glass-button font-bold uppercase tracking-[0.2em] text-[10px] border-emerald-500/20 text-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10 py-4 sm:py-auto flex items-center justify-center gap-2"
               >
                 {isScanning ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

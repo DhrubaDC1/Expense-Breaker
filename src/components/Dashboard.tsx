@@ -46,17 +46,17 @@ export default function Dashboard() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pb-8">
       {/* Balance Card - Span 2 */}
-      <div className="md:col-span-2 glass-card p-8 flex flex-col justify-between min-h-[220px] relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+      <div className="md:col-span-2 glass-card p-6 sm:p-8 flex flex-col justify-between min-h-[200px] sm:min-h-[220px] relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-6 sm:p-8 opacity-5 group-hover:opacity-10 transition-opacity">
           <CreditCard className="w-32 h-32 rotate-12" />
         </div>
         <div>
           <span className="section-label">Net Liquidity</span>
-          <h2 className="text-5xl font-bold mt-2 tabular-nums text-white tracking-tight">
-            {netBalance.toLocaleString()} <span className="text-xl text-gray-600 font-normal">{currency}</span>
+          <h2 className="text-4xl sm:text-5xl font-bold mt-2 tabular-nums text-white tracking-tight">
+            {netBalance.toLocaleString()} <span className="text-lg sm:text-xl text-gray-600 font-normal">{currency}</span>
           </h2>
         </div>
-        <div className="flex gap-8 mt-8">
+        <div className="flex gap-4 sm:gap-8 mt-6 sm:mt-8">
           <div className="flex items-center gap-3">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
             <div>
@@ -128,7 +128,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Activity - Span 3 */}
-      <div className="md:col-span-3 glass-card p-8">
+      <div className="md:col-span-3 glass-card p-6 sm:p-8">
         <div className="flex justify-between items-center mb-8">
           <h3 className="text-sm font-bold text-white uppercase tracking-[0.2em]">Live Ledger</h3>
           <button className="text-[10px] text-gray-500 hover:text-white transition-colors font-bold uppercase tracking-widest">Historical View</button>

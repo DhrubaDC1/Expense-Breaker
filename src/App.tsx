@@ -74,7 +74,7 @@ function AppContent() {
   return (
     <div className="relative min-h-screen pb-24">
       {/* Header */}
-      <header className="p-6 md:p-8 flex justify-between items-center max-w-7xl mx-auto">
+      <header className="p-4 md:p-8 flex justify-between items-center max-w-7xl mx-auto">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
             <div className="w-4 h-4 bg-black/20 rounded-sm rotate-45"></div>
@@ -103,7 +103,7 @@ function AppContent() {
       </header>
       
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6">
+      <main className="max-w-7xl mx-auto px-4 md:px-6">
         <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && (
             <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -134,7 +134,7 @@ function AppContent() {
       </main>
 
       {/* Navigation Bar */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 p-1.5 bg-[#111111] border border-white/10 rounded-2xl shadow-2xl z-40">
+      <nav className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-[#111111] border border-white/10 rounded-2xl shadow-2xl z-40 w-[95%] sm:w-auto max-w-fit justify-center">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -142,7 +142,7 @@ function AppContent() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={cn(
-                "p-3.5 rounded-xl transition-all duration-200 relative group",
+                "p-2.5 sm:p-3.5 rounded-xl transition-all duration-200 relative group",
                 activeTab === tab.id ? "bg-white/5 text-emerald-500 shadow-inner" : "text-gray-500 hover:text-gray-300"
               )}
             >
@@ -161,7 +161,7 @@ function AppContent() {
         
         <button 
           onClick={() => setIsBatchModalOpen(true)}
-          className="p-3.5 bg-white/5 text-emerald-500 rounded-xl hover:bg-white/10 transition-all border border-white/5 group"
+          className="p-2.5 sm:p-3.5 bg-white/5 text-emerald-500 rounded-xl hover:bg-white/10 transition-all border border-white/5 group"
           title="Batch Import"
         >
           <History className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -169,7 +169,7 @@ function AppContent() {
 
         <button 
           onClick={() => setIsAddModalOpen(true)}
-          className="p-3.5 bg-emerald-500 text-black rounded-xl hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+          className="p-2.5 sm:p-3.5 bg-emerald-500 text-black rounded-xl hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
         >
           <Plus className="w-5 h-5" />
         </button>

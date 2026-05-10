@@ -75,7 +75,7 @@ export default function BatchImportModal({ isOpen, onClose }: Props) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           onClick={e => e.stopPropagation()}
-          className="relative w-full max-w-2xl glass-panel p-8 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+          className="relative w-full max-w-2xl glass-panel p-6 sm:p-8 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
         >
           <div className="flex justify-between items-center mb-8">
             <div>
@@ -111,7 +111,7 @@ export default function BatchImportModal({ isOpen, onClose }: Props) {
               {importType === 'images' ? (
                 <div 
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-white/5 rounded-3xl p-12 flex flex-col items-center justify-center gap-4 hover:bg-white/[0.02] transition-all cursor-pointer group"
+                  className="border-2 border-dashed border-white/5 rounded-3xl p-8 sm:p-12 flex flex-col items-center justify-center gap-4 hover:bg-white/[0.02] transition-all cursor-pointer group"
                 >
                   <div className="p-5 bg-white/5 rounded-2xl group-hover:scale-110 transition-transform">
                     <Upload className="w-8 h-8 text-emerald-500" />
