@@ -1,7 +1,9 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import { Transaction, Currency } from "../types";
+import Groq from "groq-sdk";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const groq = new Groq({ 
+  apiKey: process.env.GROQ_API_KEY || '', 
+  dangerouslyAllowBrowser: true 
+});
 
 export interface ExtractedTransaction {
   amount: number;
@@ -14,43 +16,35 @@ export interface ExtractedTransaction {
 }
 
 export async function extractTransactionFromImage(base64Image: string): Promise<ExtractedTransaction | null> {
-  const model = "gemini-3-flash-preview";
+  const model = "meta-llama/llama-4-scout-17b-16e-instruct";
   
   try {
-    const response = await ai.models.generateContent({
+    const response = await groq.chat.completions.create({
       model,
-      contents: [
+      messages: [
         {
-          inlineData: {
-            mimeType: "image/jpeg",
-            data: base64Image,
-          },
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Extract transaction details from this receipt image. 
+              Return a JSON object with: amount (number), currency (ISO string), category (one of: Food & Dining, Transport, Entertainment, Shopping, Utilities, Health, Other), date (YYYY-MM-DD), merchant (string), note (string). 
+              Also include a 'confidence' score between 0 and 1. Do not include any text outside of the JSON.`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`,
+              },
+            },
+          ],
         },
-        {
-          text: `Extract transaction details from this receipt image. 
-          Return a JSON object with: amount (number), currency (ISO string), category (one of: Food & Dining, Transport, Entertainment, Shopping, Utilities, Health, Other), date (YYYY-MM-DD), merchant (string), note (string). 
-          Also include a 'confidence' score between 0 and 1.`,
-        }
       ],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            amount: { type: Type.NUMBER },
-            currency: { type: Type.STRING },
-            category: { type: Type.STRING },
-            date: { type: Type.STRING },
-            merchant: { type: Type.STRING },
-            note: { type: Type.STRING },
-            confidence: { type: Type.NUMBER },
-          },
-          required: ["amount", "currency", "date"],
-        },
-      },
+      response_format: { type: "json_object" },
     });
 
-    const data = JSON.parse(response.text || '{}');
+    const content = response.choices[0]?.message?.content;
+    const data = JSON.parse(content || '{}');
     return data as ExtractedTransaction;
   } catch (error) {
     console.error("AI OCR Error:", error);
@@ -59,37 +53,32 @@ export async function extractTransactionFromImage(base64Image: string): Promise<
 }
 
 export async function parseSmartImport(text: string): Promise<ExtractedTransaction[]> {
-  const model = "gemini-3-flash-preview";
+  const model = "meta-llama/llama-4-scout-17b-16e-instruct";
   
   try {
-    const response = await ai.models.generateContent({
+    const response = await groq.chat.completions.create({
       model,
-      contents: `Parse the following text and extract a list of transactions. 
-      Input text: "${text}"
-      
-      Return a JSON array of objects with: amount, currency, category, date (YYYY-MM-DD), merchant, note.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              amount: { type: Type.NUMBER },
-              currency: { type: Type.STRING },
-              category: { type: Type.STRING },
-              date: { type: Type.STRING },
-              merchant: { type: Type.STRING },
-              note: { type: Type.STRING },
-            },
-            required: ["amount", "currency", "date"],
-          },
-        },
-      },
+      messages: [
+        {
+          role: "user",
+          content: `Parse the following text and extract a list of transactions. 
+          Input text: "${text}"
+          
+          Return a JSON object containing an array called "transactions", where each element is an object with: amount (number), currency (string), category (string), date (YYYY-MM-DD), merchant (string), note (string), confidence (number).`
+        }
+      ],
+      response_format: { type: "json_object" },
     });
 
-    const data = JSON.parse(response.text || '[]');
-    return data as ExtractedTransaction[];
+    const content = response.choices[0]?.message?.content;
+    const data = JSON.parse(content || '{"transactions":[]}');
+    
+    if (data.transactions) {
+      return data.transactions as ExtractedTransaction[];
+    } else if (Array.isArray(data)) {
+      return data as ExtractedTransaction[];
+    }
+    return [];
   } catch (error) {
     console.error("AI Smart Import Error:", error);
     return [];
@@ -97,47 +86,46 @@ export async function parseSmartImport(text: string): Promise<ExtractedTransacti
 }
 
 export async function extractTransactionsFromMultipleImages(base64Images: string[]): Promise<ExtractedTransaction[]> {
-  const model = "gemini-3-flash-preview";
+  const model = "meta-llama/llama-4-scout-17b-16e-instruct";
   
   try {
-    const contents: any[] = base64Images.map(base64 => ({
-      inlineData: {
-        mimeType: "image/jpeg",
-        data: base64,
-      },
-    }));
+    const contentPayload: any[] = [
+      {
+        type: "text",
+        text: `Extract transaction details from these receipt images. 
+        Return a JSON object containing an array called "transactions", where each element is an object with: amount (number), currency (ISO string), category (one of: Food & Dining, Transport, Entertainment, Shopping, Utilities, Health, Other), date (YYYY-MM-DD), merchant (string), note (string), confidence (number). 
+        Process each image as a separate transaction.`
+      }
+    ];
 
-    contents.push({
-      text: `Extract transaction details from these receipt images. 
-      Return a JSON array of objects with: amount (number), currency (ISO string), category (one of: Food & Dining, Transport, Entertainment, Shopping, Utilities, Health, Other), date (YYYY-MM-DD), merchant (string), note (string). 
-      Process each image as a separate transaction.`,
+    base64Images.forEach(base64 => {
+      contentPayload.push({
+        type: "image_url",
+        image_url: {
+          url: `data:image/jpeg;base64,${base64}`
+        }
+      });
     });
 
-    const response = await ai.models.generateContent({
+    const response = await groq.chat.completions.create({
       model,
-      contents,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              amount: { type: Type.NUMBER },
-              currency: { type: Type.STRING },
-              category: { type: Type.STRING },
-              date: { type: Type.STRING },
-              merchant: { type: Type.STRING },
-              note: { type: Type.STRING },
-            },
-            required: ["amount", "currency", "date"],
-          },
+      messages: [
+        {
+          role: "user",
+          content: contentPayload,
         },
-      },
+      ],
+      response_format: { type: "json_object" },
     });
 
-    const data = JSON.parse(response.text || '[]');
-    return data as ExtractedTransaction[];
+    const content = response.choices[0]?.message?.content;
+    const data = JSON.parse(content || '{"transactions":[]}');
+    if (data.transactions) {
+      return data.transactions as ExtractedTransaction[];
+    } else if (Array.isArray(data)) {
+      return data as ExtractedTransaction[];
+    }
+    return [];
   } catch (error) {
     console.error("AI Multi-OCR Error:", error);
     return [];

@@ -37,7 +37,7 @@ export default function Settings() {
     {
       title: 'System',
       items: [
-        { icon: Cpu, label: 'AI Processor', value: 'Gemini 3 Flash', action: () => {} },
+        { icon: Cpu, label: 'AI Processor', value: 'Groq LLaMA 3', action: () => {} },
         { icon: Smartphone, label: 'Application Version', value: '1.0.0 (Release)', action: () => {} },
       ]
     }
