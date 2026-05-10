@@ -5,6 +5,7 @@ import {
   db, 
   auth, 
   loginWithGoogle, 
+  handleRedirectResult,
   logout 
 } from './lib/firebase';
 import { 
@@ -71,8 +72,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
-  // Auth State
+  // Auth State — also handles redirect sign-in result (fallback from popup-blocked)
   useEffect(() => {
+    // Process any pending redirect sign-in result first (no-op if no redirect happened)
+    handleRedirectResult();
+
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setIsAuthLoading(false);
@@ -168,8 +172,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await loginWithGoogle();
     } catch (error: any) {
       setIsSigningIn(false);
-      if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
-        console.warn("Sign-in interaction was cancelled or interrupted.");
+      if (
+        error.code === 'auth/cancelled-popup-request' ||
+        error.code === 'auth/popup-closed-by-user' ||
+        error.code === 'auth/popup-blocked'          // handled by redirect fallback in loginWithGoogle
+      ) {
+        console.warn("Sign-in interaction was cancelled, interrupted, or popup was blocked (redirect fallback used).");
       } else {
         console.error("Sign-in error:", error);
         throw error;
