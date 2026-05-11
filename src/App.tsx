@@ -41,6 +41,7 @@ import { Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useWebHaptics } from 'web-haptics/react';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -51,6 +52,7 @@ function AppContent() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const { user, isAuthLoading, signOut } = useApp();
+  const { trigger } = useWebHaptics();
 
   if (isAuthLoading) {
     return (
@@ -94,7 +96,10 @@ function AppContent() {
             <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Active Session</p>
           </div>
           <button 
-            onClick={() => signOut()}
+            onClick={() => {
+              trigger("warning");
+              signOut();
+            }}
             className="p-2.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all text-gray-400 hover:text-rose-500"
             title="Terminate Session"
           >
@@ -141,7 +146,10 @@ function AppContent() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => {
+                if (activeTab !== tab.id) trigger("selection");
+                setActiveTab(tab.id as any);
+              }}
               className={cn(
                 "p-2.5 sm:p-3.5 rounded-xl transition-all duration-200 relative group",
                 activeTab === tab.id ? "bg-white/5 text-emerald-500 shadow-inner" : "text-gray-500 hover:text-gray-300"
@@ -161,7 +169,10 @@ function AppContent() {
         <div className="w-px h-6 bg-white/5 mx-1.5" />
         
         <button 
-          onClick={() => setIsBatchModalOpen(true)}
+          onClick={() => {
+            trigger("light");
+            setIsBatchModalOpen(true);
+          }}
           className="p-2.5 sm:p-3.5 bg-white/5 text-emerald-500 rounded-xl hover:bg-white/10 transition-all border border-white/5 group"
           title="Batch Import"
         >
@@ -169,7 +180,10 @@ function AppContent() {
         </button>
 
         <button 
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => {
+            trigger("medium");
+            setIsAddModalOpen(true);
+          }}
           className="p-2.5 sm:p-3.5 bg-emerald-500 text-black rounded-xl hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
         >
           <Plus className="w-5 h-5" />
