@@ -101,15 +101,27 @@ export default function Coach({ open, onClose }: { open: boolean; onClose: () =>
   const name = user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || 'there';
 
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', text: `Hey ${name} — I'm watching your ledger. Your balance is ${currency} ${balance.toLocaleString()}. What would you like to know?` },
+    { role: 'assistant', text: `Hey ${name} — I'm watching your ledger. What would you like to know?` },
   ]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // Refresh greeting with live balance whenever the panel opens (or user changes)
   useEffect(() => {
     setMessages([{ role: 'assistant', text: `Hey ${name} — I'm watching your ledger. Your balance is ${currency} ${balance.toLocaleString()}. What would you like to know?` }]);
   }, [user?.uid]);
+
+  useEffect(() => {
+    if (!open) return;
+    setMessages(prev => {
+      if (prev.length <= 1) {
+        return [{ role: 'assistant', text: `Hey ${name} — I'm watching your ledger. Your balance is ${currency} ${balance.toLocaleString()}. What would you like to know?` }];
+      }
+      return prev;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
