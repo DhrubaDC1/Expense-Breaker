@@ -1,48 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Plus, UserPlus, Share2, ArrowRight, Shield, Globe, Lock } from 'lucide-react';
+import { Users, Plus, Share2, ArrowRight, Trash2 } from 'lucide-react';
 import { useApp } from '../AppContext';
+import { useToast } from '../ToastContext';
 import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, arrayUnion } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, arrayUnion } from 'firebase/firestore';
 import { SharedSpace } from '../types';
+import SpaceLedgerModal from './SpaceLedgerModal';
 
 export default function SharedSpaces() {
-  const { user } = useApp();
-  const [spaces, setSpaces] = useState<SharedSpace[]>([]);
+  const { user, spaces, deleteSpace } = useApp();
+  const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [joinId, setJoinId] = useState('');
-
-  useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, 'spaces'), where('members', 'array-contains', user.uid));
-    const unsub = onSnapshot(q, (s) => {
-      setSpaces(s.docs.map(d => ({ id: d.id, ...d.data() } as SharedSpace)));
-    });
-    return unsub;
-  }, [user]);
+  const [ledgerSpace, setLedgerSpace] = useState<SharedSpace | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SharedSpace | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const createSpace = async () => {
     if (!newName.trim() || !user) return;
     await addDoc(collection(db, 'spaces'), {
       name: newName,
       members: [user.uid],
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     });
     setNewName('');
     setIsCreating(false);
+    toast(`"${newName}" space created`, 'success');
   };
 
   const joinSpace = async () => {
     if (!joinId.trim() || !user) return;
     try {
-      const spaceRef = doc(db, 'spaces', joinId);
-      await updateDoc(spaceRef, {
-        members: arrayUnion(user.uid)
-      });
+      await updateDoc(doc(db, 'spaces', joinId), { members: arrayUnion(user.uid) });
       setJoinId('');
-    } catch (e) {
-      alert("Invalid Space ID or Access Denied");
+      toast('Joined space successfully', 'success');
+    } catch {
+      toast('Invalid Space ID or access denied', 'error');
+    }
+  };
+
+  const copySpaceId = (id: string) => {
+    navigator.clipboard.writeText(id);
+    toast('Space ID copied to clipboard', 'success');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await deleteSpace(deleteTarget.id);
+      toast(`"${deleteTarget.name}" deleted`, 'success');
+      setDeleteTarget(null);
+    } catch {
+      toast('Delete failed — verify Firestore rules are deployed', 'error');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -53,7 +67,7 @@ export default function SharedSpaces() {
           <h2 className="text-2xl font-bold text-white uppercase tracking-tight">Collaborative Spaces</h2>
           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mt-1">Multi-user real-time reconciliation</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsCreating(true)}
           className="flex items-center gap-2 px-4 py-2 bg-emerald-500 rounded-lg text-[10px] font-bold text-black uppercase tracking-widest hover:scale-105 transition-all"
         >
@@ -70,7 +84,7 @@ export default function SharedSpaces() {
               layout
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="glass-card p-6 group cursor-pointer hover:border-emerald-500/30 transition-all border border-white/5"
+              className="glass-card p-6 group hover:border-emerald-500/30 transition-all border border-white/5"
             >
               <div className="flex justify-between items-start mb-6">
                 <div className="p-3 bg-white/5 rounded-xl group-hover:bg-emerald-500/10 transition-colors">
@@ -86,20 +100,27 @@ export default function SharedSpaces() {
               </div>
               <h3 className="text-lg font-bold text-white mb-1">{space.name}</h3>
               <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest mb-6">ID: {space.id}</p>
-              
+
               <div className="flex items-center gap-4 pt-4 border-t border-white/5">
-                <button className="flex-1 py-2 text-[9px] uppercase font-bold tracking-widest text-emerald-500 bg-emerald-500/5 rounded-md hover:bg-emerald-500/10 transition-all">
+                <button
+                  onClick={() => setLedgerSpace(space)}
+                  className="flex-1 py-2 text-[9px] uppercase font-bold tracking-widest text-emerald-500 bg-emerald-500/5 rounded-md hover:bg-emerald-500/10 transition-all"
+                >
                   Open Ledger
                 </button>
-                <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(space.id!);
-                    // Add toast logic here
-                  }}
+                <button
+                  onClick={() => copySpaceId(space.id)}
                   className="p-2 text-gray-500 hover:text-white transition-colors"
                   title="Copy Invite ID"
                 >
                   <Share2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setDeleteTarget(space)}
+                  className="p-2 text-gray-600 hover:text-rose-500 transition-colors"
+                  title="Delete Space"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </motion.div>
@@ -110,14 +131,14 @@ export default function SharedSpaces() {
           <div className="text-center space-y-4 w-full">
             <h4 className="text-[10px] uppercase font-bold tracking-[0.2em] text-gray-600">Join Existing Protocol</h4>
             <div className="flex gap-2">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={joinId}
                 onChange={e => setJoinId(e.target.value)}
                 placeholder="Protocol ID..."
                 className="flex-1 glass-input py-2 text-xs"
               />
-              <button 
+              <button
                 onClick={joinSpace}
                 className="p-2 bg-white/5 rounded-lg text-emerald-500 hover:bg-white/10 transition-all"
               >
@@ -128,10 +149,11 @@ export default function SharedSpaces() {
         </div>
       </div>
 
+      {/* Create space modal */}
       <AnimatePresence>
         {isCreating && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               className="glass-panel p-8 w-full max-w-sm space-y-6"
@@ -140,10 +162,11 @@ export default function SharedSpaces() {
                 <h3 className="text-lg font-bold text-white uppercase tracking-tight">New Collaborative Space</h3>
                 <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest mt-1">Define shared protocol name</p>
               </div>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && createSpace()}
                 placeholder="e.g. Household Ledger"
                 autoFocus
                 className="w-full glass-input"
@@ -151,6 +174,53 @@ export default function SharedSpaces() {
               <div className="flex gap-4">
                 <button onClick={() => setIsCreating(false)} className="flex-1 py-3 text-[10px] uppercase tracking-widest font-bold text-gray-500 hover:text-white">Cancel</button>
                 <button onClick={createSpace} className="flex-1 py-3 bg-emerald-500 text-black rounded-lg text-[10px] uppercase tracking-widest font-bold">Initialize</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <SpaceLedgerModal space={ledgerSpace} onClose={() => setLedgerSpace(null)} />
+
+      {/* Delete confirmation modal */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isDeleting && setDeleteTarget(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-sm glass-panel p-8 space-y-6"
+            >
+              <div>
+                <h3 className="text-base font-bold text-white uppercase tracking-tight">Delete Space</h3>
+                <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest mt-1">This action cannot be undone</p>
+              </div>
+              <p className="text-sm text-gray-400">
+                Permanently delete <span className="text-white font-bold">"{deleteTarget.name}"</span> and all its transactions? All members will lose access.
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={isDeleting}
+                  className="flex-1 py-3 text-[10px] uppercase tracking-widest font-bold text-gray-500 hover:text-white transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting}
+                  className="flex-[2] py-3 bg-rose-500 text-white rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] hover:scale-[1.01] active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {isDeleting ? 'Deleting…' : 'Delete Space'}
+                </button>
               </div>
             </motion.div>
           </div>

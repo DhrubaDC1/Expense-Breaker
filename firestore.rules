@@ -85,7 +85,8 @@ service cloud.firestore {
 
       match /goals/{goalId} {
         allow read: if isOwner(userId);
-        allow write: if isOwner(userId) && isValidId(goalId) && isValidGoal(incoming());
+        allow create, update: if isOwner(userId) && isValidId(goalId) && isValidGoal(incoming());
+        allow delete: if isOwner(userId) && isValidId(goalId);
       }
     }
 
@@ -103,9 +104,11 @@ service cloud.firestore {
         && incoming().members.size() > 0
         && request.auth.uid in incoming().members;
 
+      allow delete: if isSignedIn() && request.auth.uid in existing().members && isValidId(spaceId);
+
       match /transactions/{transactionId} {
         allow read: if isMember();
-        allow create: if isMember() 
+        allow create: if isMember()
           && isValidId(transactionId)
           && isValidTransaction(incoming());
         allow update: if isMember()
