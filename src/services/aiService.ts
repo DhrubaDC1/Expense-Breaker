@@ -85,6 +85,26 @@ export async function parseSmartImport(text: string): Promise<ExtractedTransacti
   }
 }
 
+export async function chatWithCoach(
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+  systemPrompt: string
+): Promise<string> {
+  const model = 'meta-llama/llama-4-scout-17b-16e-instruct';
+  try {
+    const response = await groq.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system' as const, content: systemPrompt },
+        ...messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+      ],
+    });
+    return response.choices[0]?.message?.content?.trim() || "I couldn't process that. Try again?";
+  } catch (error) {
+    console.error('Coach chat error:', error);
+    throw error;
+  }
+}
+
 export async function extractTransactionsFromMultipleImages(base64Images: string[]): Promise<ExtractedTransaction[]> {
   const model = "meta-llama/llama-4-scout-17b-16e-instruct";
   

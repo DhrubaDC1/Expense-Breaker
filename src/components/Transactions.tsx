@@ -1,112 +1,236 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
+import { Search, Sparkles, Trash2 } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { CATEGORIES } from '../constants';
-import { Trash2, ShoppingBag, Receipt, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { GlassCard } from './ui';
+import { useIsMobile } from '../lib/useIsMobile';
 
-export default function Transactions() {
+export default function Transactions({ contentPad = '0 32px' }: { contentPad?: string }) {
   const { transactions, deleteTransaction, currency } = useApp();
+  const isMobile = useIsMobile();
+  const [q, setQ] = useState('');
+  const [cat, setCat] = useState('all');
+
+  const filtered = useMemo(() => {
+    return transactions.filter(t => {
+      if (cat !== 'all' && t.category !== cat) return false;
+      if (q && !`${t.note} ${t.category}`.toLowerCase().includes(q.toLowerCase())) return false;
+      return true;
+    });
+  }, [transactions, q, cat]);
+
+  const net = filtered.reduce((s, t) => t.type === 'income' ? s + t.amount : s - t.amount, 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div style={{ padding: contentPad }}>
+      {/* Header */}
+      <div className="view-enter" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 18 }}>
         <div>
-          <h2 className="text-2xl font-bold text-white uppercase tracking-tight">Activity Log</h2>
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mt-1">Real-time ledger processing</p>
+          <div className="h-display" style={{ fontSize: isMobile ? 28 : 40 }}>Activity Log</div>
+          <div className="label-text" style={{ marginTop: 4 }}>
+            Real-time ledger · {transactions.length} entries · AI-classified
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <div className="chip">
+            Net&nbsp;<span className="mono" style={{ color: net >= 0 ? 'var(--mint)' : '#FF9A9A', marginLeft: 4 }}>
+              {net >= 0 ? '+' : '−'}{currency}&nbsp;{Math.abs(net).toLocaleString()}
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="glass-card">
-        {/* Mobile View */}
-        <div className="block sm:hidden divide-y divide-white/5">
-          {transactions.length > 0 ? transactions.map((t) => (
-            <div key={t.id} className="p-4 flex flex-col gap-3 group hover:bg-white/[0.01] transition-colors">
-              <div className="flex justify-between items-start gap-2">
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <div className="w-1.5 h-1.5 rounded-full bg-gray-700 mt-1.5 flex-shrink-0"></div>
-                  <span className="font-medium text-xs text-gray-300 break-words line-clamp-2">{t.note || 'Process Entry'}</span>
-                </div>
-                <div className="flex items-center gap-1 font-bold whitespace-nowrap flex-shrink-0 ml-2">
-                   <span className={t.type === 'income' ? 'text-emerald-500' : 'text-gray-400'}>
-                     {t.type === 'income' ? '+' : '-'} {t.amount.toLocaleString()} <span className="text-[10px] opacity-40">{currency}</span>
-                   </span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center pl-4.5">
-                <div className="flex items-center gap-3">
-                  <span className="text-[9px] uppercase tracking-wider font-bold py-1 px-2 rounded bg-white/5 text-gray-500 border border-white/5">
-                    {t.category}
-                  </span>
-                  <span className="text-[10px] text-gray-500 font-mono">
-                    {new Date(t.date).toLocaleDateString()}
-                  </span>
-                </div>
-                <button 
-                  onClick={() => deleteTransaction(t.id)}
-                  className="p-1.5 text-rose-500/30 hover:text-rose-500 hover:bg-rose-500/10 rounded-md transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+      <GlassCard className="view-enter" style={{ padding: 18, animationDelay: '80ms' }}>
+        {/* Search */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 12px', borderRadius: 12, flex: 1,
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid var(--glass-edge-soft)',
+          }}>
+            <Search size={14} style={{ color: 'var(--ink-mute)', flexShrink: 0 }} />
+            <input
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              placeholder='Search transactions — note, category…'
+              style={{ background: 'transparent', border: 0, outline: 0, flex: 1, fontSize: 12, color: 'var(--ink)' }}
+            />
+            <span className="chip chip-violet" style={{ fontSize: 9 }}>
+              <Sparkles size={9} style={{ display: 'inline' }} />&nbsp;AI
+            </span>
+          </div>
+        </div>
+
+        {/* Category filters */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+          {[{ name: 'all', color: '' }, ...CATEGORIES].map(c => {
+            const active = c.name === cat;
+            const color = (c as any).color || 'var(--mint)';
+            return (
+              <button
+                key={c.name}
+                onClick={() => setCat(c.name)}
+                className="chip"
+                style={{
+                  cursor: 'pointer',
+                  color: active ? color : 'var(--ink-mute)',
+                  borderColor: active ? `color-mix(in oklab, ${color} 40%, transparent)` : 'var(--glass-edge-soft)',
+                  background: active ? `color-mix(in oklab, ${color} 12%, transparent)` : 'transparent',
+                  transition: 'all 0.25s var(--ease-soft)',
+                  textTransform: 'none',
+                }}
+              >
+                {(c as any).color && <span style={{ width: 6, height: 6, borderRadius: 2, background: (c as any).color, marginRight: 4, display: 'inline-block' }} />}
+                {c.name === 'all' ? 'All' : c.name}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Table header — desktop only */}
+        {!isMobile && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1.6fr 1fr 1fr 1fr 0.5fr',
+            gap: 10,
+            padding: '8px 10px',
+            fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: 'var(--ink-faint)',
+            borderBottom: '1px solid var(--glass-edge-soft)',
+          }}>
+            <div>Note / Merchant</div>
+            <div>Category</div>
+            <div>Date</div>
+            <div style={{ textAlign: 'right' }}>Value</div>
+            <div style={{ textAlign: 'right' }}>Del</div>
+          </div>
+        )}
+
+        {/* Rows */}
+        <div>
+          {filtered.length === 0 ? (
+            <div style={{ padding: '24px 10px', textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
+              {transactions.length === 0 ? 'No transactions yet. Add your first entry!' : 'No matches.'}
             </div>
-          )) : (
-            <div className="px-6 py-20 text-center text-gray-700 text-[10px] uppercase font-bold tracking-[0.2em]">Zero entries recorded</div>
+          ) : isMobile ? (
+            /* Mobile: card rows */
+            filtered.map((t, i) => {
+              const catInfo = CATEGORIES.find(c => c.name === t.category);
+              const color = catInfo?.color || '#8a9892';
+              return (
+                <div
+                  key={t.id}
+                  className="view-enter"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 10px',
+                    borderBottom: '1px solid rgba(255,255,255,0.03)',
+                    animationDelay: `${i * 30}ms`,
+                  }}
+                >
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                    display: 'grid', placeItems: 'center',
+                    background: `color-mix(in oklab, ${color} 14%, transparent)`,
+                    color, border: `1px solid color-mix(in oklab, ${color} 25%, transparent)`,
+                    fontSize: 13, fontWeight: 600,
+                  }}>
+                    {t.category?.charAt(0)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--ink)' }}>
+                      {t.note || t.category}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--ink-faint)', marginTop: 2 }}>
+                      {t.category} · {t.date}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    <div className="mono" style={{
+                      fontSize: 13, fontWeight: 500,
+                      color: t.type === 'income' ? 'var(--mint)' : 'var(--ink)',
+                    }}>
+                      {t.type === 'income' ? '+' : '−'}{t.currency}&nbsp;{t.amount.toLocaleString()}
+                    </div>
+                    <button
+                      onClick={() => deleteTransaction(t.id)}
+                      style={{ color: 'var(--ink-faint)', padding: 6, borderRadius: 6, transition: 'color 0.2s' }}
+                      onTouchStart={e => (e.currentTarget.style.color = '#FF9A9A')}
+                      onTouchEnd={e => (e.currentTarget.style.color = 'var(--ink-faint)')}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            /* Desktop: table rows */
+            filtered.map((t, i) => {
+              const catInfo = CATEGORIES.find(c => c.name === t.category);
+              const color = catInfo?.color || '#8a9892';
+              return (
+                <div
+                  key={t.id}
+                  className="view-enter"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1.6fr 1fr 1fr 1fr 0.5fr',
+                    gap: 10, alignItems: 'center',
+                    padding: '12px 10px',
+                    borderBottom: '1px solid rgba(255,255,255,0.03)',
+                    fontSize: 12,
+                    animationDelay: `${i * 30}ms`,
+                    transition: 'background 0.2s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                      display: 'grid', placeItems: 'center',
+                      background: `color-mix(in oklab, ${color} 14%, transparent)`,
+                      color, border: `1px solid color-mix(in oklab, ${color} 25%, transparent)`,
+                      fontSize: 11, fontWeight: 600,
+                    }}>
+                      {t.category?.charAt(0)}
+                    </div>
+                    <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                      <div style={{ color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {t.note || t.category}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ color: 'var(--ink-mute)' }}>{t.category}</div>
+                  <div className="mono" style={{ color: 'var(--ink-mute)', fontSize: 11 }}>{t.date}</div>
+                  <div className="mono" style={{
+                    textAlign: 'right',
+                    color: t.type === 'income' ? 'var(--mint)' : 'var(--ink)',
+                    fontWeight: 500,
+                  }}>
+                    {t.type === 'income' ? '+' : '−'}{t.currency}&nbsp;{t.amount.toLocaleString()}
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <button
+                      onClick={() => deleteTransaction(t.id)}
+                      style={{
+                        color: 'var(--ink-faint)', padding: 4, borderRadius: 6,
+                        transition: 'color 0.2s, background 0.2s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#FF9A9A'; e.currentTarget.style.background = 'rgba(255,106,107,0.1)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--ink-faint)'; e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
-
-        {/* Desktop View */}
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-left border-collapse whitespace-nowrap">
-            <thead>
-              <tr className="border-b border-white/5 bg-white/[0.02]">
-                <th className="px-4 sm:px-6 py-4 text-[10px] uppercase tracking-widest text-gray-500 font-bold">Transaction Unit</th>
-                <th className="px-4 sm:px-6 py-4 text-[10px] uppercase tracking-widest text-gray-500 font-bold">Category</th>
-                <th className="px-4 sm:px-6 py-4 text-[10px] uppercase tracking-widest text-gray-500 font-bold">Timestamp</th>
-                <th className="px-4 sm:px-6 py-4 text-[10px] uppercase tracking-widest text-gray-500 font-bold">Value</th>
-                <th className="px-4 sm:px-6 py-4 text-[10px] uppercase tracking-widest text-gray-500 font-bold">States</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5 font-mono">
-              {transactions.length > 0 ? transactions.map((t) => (
-                <tr key={t.id} className="hover:bg-white/[0.01] transition-colors group">
-                  <td className="px-4 sm:px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                      <span className="font-medium text-xs text-gray-300">{t.note || 'Process Entry'}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 sm:px-6 py-4">
-                    <span className="text-[9px] uppercase tracking-wider font-bold py-1 px-2 rounded bg-white/5 text-gray-500 border border-white/5">
-                      {t.category}
-                    </span>
-                  </td>
-                  <td className="px-4 sm:px-6 py-4 text-[10px] text-gray-500">
-                    {new Date(t.date).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 sm:px-6 py-4">
-                    <div className="flex items-center gap-1 font-bold">
-                       <span className={t.type === 'income' ? 'text-emerald-500' : 'text-gray-400'}>
-                         {t.type === 'income' ? '+' : '-'} {t.amount.toLocaleString()} <span className="text-[10px] opacity-40">{currency}</span>
-                       </span>
-                    </div>
-                  </td>
-                  <td className="px-4 sm:px-6 py-4">
-                    <button 
-                      onClick={() => deleteTransaction(t.id)}
-                      className="p-1.5 text-rose-500/30 hover:text-rose-500 hover:bg-rose-500/10 rounded-md transition-all opacity-100 sm:opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan={5} className="px-6 py-20 text-center text-gray-700 text-[10px] uppercase font-bold tracking-[0.2em]">Zero entries recorded</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      </GlassCard>
     </div>
   );
 }
