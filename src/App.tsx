@@ -36,6 +36,7 @@ import AddTransactionModal from './components/AddTransactionModal';
 import BatchImportModal from './components/BatchImportModal';
 import Login from './components/Login';
 import SharedSpaces from './components/SharedSpaces';
+import LockScreen from './components/LockScreen';
 
 import { Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -53,6 +54,13 @@ function AppContent() {
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const { user, isAuthLoading, signOut } = useApp();
   const { trigger } = useWebHaptics();
+
+  const [biometricCredential] = useState<string | null>(() => localStorage.getItem('biometric_lock_credential'));
+  const [isUnlocked, setIsUnlocked] = useState(false);
+
+  if (biometricCredential && !isUnlocked) {
+    return <LockScreen credentialId={biometricCredential} onUnlock={() => setIsUnlocked(true)} />;
+  }
 
   if (isAuthLoading) {
     return (
