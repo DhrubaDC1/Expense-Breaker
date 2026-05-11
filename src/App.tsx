@@ -289,8 +289,6 @@ function AppContent() {
     <>
       <div className="mesh" aria-hidden="true">
         <div className="orb-3" />
-        <div className="glow-line gl-1" />
-        <div className="glow-line gl-2" />
         <div className="grain" />
         <div className="mesh-veil" />
       </div>

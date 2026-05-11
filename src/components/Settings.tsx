@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { Sparkles, Brain, Bell, Mic, Camera, Globe, Lock, ShieldCheck, LogOut, Fingerprint, Check, X } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { useToast } from '../ToastContext';
@@ -116,7 +117,6 @@ export default function Settings({ contentPad = '0 32px' }: { contentPad?: strin
   };
 
   const initial = user?.displayName?.charAt(0) || user?.email?.charAt(0) || '?';
-  const modalWidth = isMobile ? '92vw' : 480;
 
   return (
     <div style={{ padding: contentPad, maxWidth: 880, margin: '0 auto' }}>
@@ -215,69 +215,73 @@ export default function Settings({ contentPad = '0 32px' }: { contentPad?: strin
       </GlassCard>
 
       {/* Biometric modal */}
-      {activeModal === 'biometric' && (
+      {activeModal === 'biometric' && ReactDOM.createPortal(
         <>
           <div className="scrim" onClick={() => setActiveModal(null)} />
-          <div style={{ position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', zIndex: 95, width: modalWidth, animation: 'fadeIn 0.4s var(--ease-spring) both' }}>
-            <GlassCard strong style={{ padding: 28 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-                <div>
-                  <div className="h-display" style={{ fontSize: 20 }}>Biometric Lock</div>
-                  <div style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 4 }}>Device authentication</div>
+          <div className="log-entry-modal">
+            <GlassCard strong className="log-entry-card">
+              <div className="log-entry-body">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                  <div>
+                    <div className="h-display" style={{ fontSize: 20 }}>Biometric Lock</div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 4 }}>Device authentication</div>
+                  </div>
+                  <button onClick={() => setActiveModal(null)} style={{ color: 'var(--ink-mute)', padding: 4 }}><X size={16} /></button>
                 </div>
-                <button onClick={() => setActiveModal(null)} style={{ color: 'var(--ink-mute)', padding: 4 }}><X size={16} /></button>
-              </div>
 
-              <div style={{ textAlign: 'center', padding: '8px 0 20px' }}>
-                <div style={{
-                  width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px',
-                  background: 'color-mix(in oklab, var(--mint) 10%, transparent)',
-                  border: '1px solid color-mix(in oklab, var(--mint) 30%, transparent)',
-                  display: 'grid', placeItems: 'center',
-                }}>
-                  <Fingerprint size={28} style={{ color: 'var(--mint)' }} />
+                <div style={{ textAlign: 'center', padding: '8px 0 20px' }}>
+                  <div style={{
+                    width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px',
+                    background: 'color-mix(in oklab, var(--mint) 10%, transparent)',
+                    border: '1px solid color-mix(in oklab, var(--mint) 30%, transparent)',
+                    display: 'grid', placeItems: 'center',
+                  }}>
+                    <Fingerprint size={28} style={{ color: 'var(--mint)' }} />
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--ink-mute)', lineHeight: 1.6, maxWidth: 320, margin: '0 auto' }}>
+                    Secure your app using your device's built-in biometric authentication (Face ID, Touch ID, or PIN). Lock activates on next app load.
+                  </div>
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--ink-mute)', lineHeight: 1.6, maxWidth: 320, margin: '0 auto' }}>
-                  Secure your app using your device's built-in biometric authentication (Face ID, Touch ID, or PIN). Lock activates on next app load.
-                </div>
-              </div>
 
-              {!isBiometricSupported ? (
-                <div style={{
-                  padding: 14, borderRadius: 12, textAlign: 'center',
-                  background: 'rgba(255,100,100,0.06)',
-                  border: '1px solid rgba(255,100,100,0.2)',
-                  fontSize: 12, color: '#FF9A9A',
-                }}>
-                  Biometric authentication is not available on this device or browser.
-                </div>
-              ) : (
-                <button
-                  onClick={handleToggleBiometric}
-                  className="btn btn-primary"
-                  style={{
-                    width: '100%', marginTop: 4,
-                    background: biometricCredential
-                      ? 'linear-gradient(180deg, rgba(255,100,100,0.3), rgba(255,80,80,0.2))'
-                      : undefined,
-                    color: biometricCredential ? '#FF9A9A' : undefined,
-                    boxShadow: biometricCredential ? '0 6px 16px -4px rgba(255,80,80,0.3)' : undefined,
-                  }}
-                >
-                  {biometricCredential ? 'Disable Biometric Lock' : 'Enable Biometric Lock'}
-                </button>
-              )}
+                {!isBiometricSupported ? (
+                  <div style={{
+                    padding: 14, borderRadius: 12, textAlign: 'center',
+                    background: 'rgba(255,100,100,0.06)',
+                    border: '1px solid rgba(255,100,100,0.2)',
+                    fontSize: 12, color: '#FF9A9A',
+                  }}>
+                    Biometric authentication is not available on this device or browser.
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleToggleBiometric}
+                    className="btn btn-primary"
+                    style={{
+                      width: '100%', marginTop: 4,
+                      background: biometricCredential
+                        ? 'linear-gradient(180deg, rgba(255,100,100,0.3), rgba(255,80,80,0.2))'
+                        : undefined,
+                      color: biometricCredential ? '#FF9A9A' : undefined,
+                      boxShadow: biometricCredential ? '0 6px 16px -4px rgba(255,80,80,0.3)' : undefined,
+                    }}
+                  >
+                    {biometricCredential ? 'Disable Biometric Lock' : 'Enable Biometric Lock'}
+                  </button>
+                )}
+              </div>
             </GlassCard>
           </div>
-        </>
+        </>,
+        document.body
       )}
 
       {/* Appearance modal */}
-      {activeModal === 'appearance' && (
+      {activeModal === 'appearance' && ReactDOM.createPortal(
         <>
           <div className="scrim" onClick={() => setActiveModal(null)} />
-          <div style={{ position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', zIndex: 95, width: modalWidth, animation: 'fadeIn 0.4s var(--ease-spring) both' }}>
-            <GlassCard strong style={{ padding: 28 }}>
+          <div className="log-entry-modal">
+            <GlassCard strong className="log-entry-card">
+            <div className="log-entry-body">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                 <div>
                   <div className="h-display" style={{ fontSize: 20 }}>Appearance</div>
@@ -315,9 +319,11 @@ export default function Settings({ contentPad = '0 32px' }: { contentPad?: strin
                   <span className="label-text" style={{ fontSize: 9 }}>SOON</span>
                 </div>
               </div>
+            </div>
             </GlassCard>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );

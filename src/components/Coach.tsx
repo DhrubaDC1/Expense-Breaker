@@ -78,9 +78,9 @@ function MessageBubble({ m, idx }: { m: Message; idx: number }) {
         padding: '10px 14px',
         borderRadius: isUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
         background: isUser
-          ? 'linear-gradient(135deg, rgba(16,229,163,0.18), rgba(16,229,163,0.06))'
-          : 'rgba(255,255,255,0.04)',
-        border: `1px solid ${isUser ? 'color-mix(in oklab, var(--mint) 30%, transparent)' : 'var(--glass-edge-soft)'}`,
+          ? 'linear-gradient(135deg, rgba(16,229,163,0.22), rgba(16,229,163,0.12))'
+          : 'rgba(255,255,255,0.09)',
+        border: `1px solid ${isUser ? 'color-mix(in oklab, var(--mint) 35%, transparent)' : 'rgba(255,255,255,0.10)'}`,
         fontSize: 13, lineHeight: 1.5,
         color: 'var(--ink)',
         whiteSpace: 'pre-wrap',
@@ -162,7 +162,7 @@ export default function Coach({ open, onClose }: { open: boolean; onClose: () =>
         width: 420, zIndex: 90,
         animation: 'coachIn 0.5s var(--ease-spring) both',
       }}>
-        <div className="glass glass-strong" style={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: isMobile ? 0 : 22, overflow: 'hidden' }}>
+        <div className="glass glass-strong" style={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: isMobile ? 0 : 22, overflow: 'hidden', background: 'rgba(4,10,8,0.92)' }}>
           {/* Header */}
           <div style={{
             padding: '16px 20px',
@@ -243,7 +243,7 @@ export default function Coach({ open, onClose }: { open: boolean; onClose: () =>
           )}
 
           {/* Input */}
-          <div style={{ padding: 14, borderTop: '1px solid var(--glass-edge-soft)', background: 'rgba(255,255,255,0.015)' }}>
+          <div style={{ padding: 14, borderTop: '1px solid var(--glass-edge-soft)', background: 'rgba(0,0,0,0.25)' }}>
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '8px 8px 8px 14px',
