@@ -1,231 +1,121 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Users, Plus, Share2, ArrowRight, Trash2 } from 'lucide-react';
+import { Plus, Sparkles, Trash2, Users } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { useToast } from '../ToastContext';
-import { db } from '../lib/firebase';
-import { collection, addDoc, updateDoc, doc, arrayUnion } from 'firebase/firestore';
-import { SharedSpace } from '../types';
-import SpaceLedgerModal from './SpaceLedgerModal';
+import { GlassCard } from './ui';
+
+const SPACE_COLORS = ['#10E5A3', '#FF7AC6', '#9A8CFF', '#FFC062', '#7BD9E0'];
 
 export default function SharedSpaces() {
-  const { user, spaces, deleteSpace } = useApp();
-  const { toast } = useToast();
-  const [isCreating, setIsCreating] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [joinId, setJoinId] = useState('');
-  const [ledgerSpace, setLedgerSpace] = useState<SharedSpace | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<SharedSpace | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const createSpace = async () => {
-    if (!newName.trim() || !user) return;
-    await addDoc(collection(db, 'spaces'), {
-      name: newName,
-      members: [user.uid],
-      createdAt: new Date().toISOString(),
-    });
-    setNewName('');
-    setIsCreating(false);
-    toast(`"${newName}" space created`, 'success');
-  };
-
-  const joinSpace = async () => {
-    if (!joinId.trim() || !user) return;
-    try {
-      await updateDoc(doc(db, 'spaces', joinId), { members: arrayUnion(user.uid) });
-      setJoinId('');
-      toast('Joined space successfully', 'success');
-    } catch {
-      toast('Invalid Space ID or access denied', 'error');
-    }
-  };
-
-  const copySpaceId = (id: string) => {
-    navigator.clipboard.writeText(id);
-    toast('Space ID copied to clipboard', 'success');
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deleteTarget || isDeleting) return;
-    setIsDeleting(true);
-    try {
-      await deleteSpace(deleteTarget.id);
-      toast(`"${deleteTarget.name}" deleted`, 'success');
-      setDeleteTarget(null);
-    } catch {
-      toast('Delete failed — verify Firestore rules are deployed', 'error');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
+  const { spaces, deleteSpace } = useApp();
+  const { showToast } = useToast();
+  const [joinCode, setJoinCode] = useState('');
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
+    <div style={{ padding: '0 32px' }}>
+      {/* Header */}
+      <div className="view-enter" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 18 }}>
         <div>
-          <h2 className="text-2xl font-bold text-white uppercase tracking-tight">Collaborative Spaces</h2>
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mt-1">Multi-user real-time reconciliation</p>
+          <div className="h-display" style={{ fontSize: 40 }}>Collaborative Spaces</div>
+          <div className="label-text" style={{ marginTop: 4 }}>
+            Multi-user real-time reconciliation · AI auto-split
+          </div>
         </div>
-        <button
-          onClick={() => setIsCreating(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 rounded-lg text-[10px] font-bold text-black uppercase tracking-widest hover:scale-105 transition-all"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Initialize Space
+        <button className="btn btn-primary">
+          <Plus size={14} /> Initialize Space
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <AnimatePresence>
-          {spaces.map((space) => (
-            <motion.div
-              key={space.id}
-              layout
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass-card p-6 group hover:border-emerald-500/30 transition-all border border-white/5"
-            >
-              <div className="flex justify-between items-start mb-6">
-                <div className="p-3 bg-white/5 rounded-xl group-hover:bg-emerald-500/10 transition-colors">
-                  <Users className="w-6 h-6 text-emerald-500" />
-                </div>
-                <div className="flex -space-x-2">
-                  {space.members.map((m, i) => (
-                    <div key={i} className="w-8 h-8 rounded-full bg-gray-800 border-2 border-black flex items-center justify-center text-[10px] font-bold text-white uppercase">
-                      {m.slice(0, 1)}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <h3 className="text-lg font-bold text-white mb-1">{space.name}</h3>
-              <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest mb-6">ID: {space.id}</p>
-
-              <div className="flex items-center gap-4 pt-4 border-t border-white/5">
-                <button
-                  onClick={() => setLedgerSpace(space)}
-                  className="flex-1 py-2 text-[9px] uppercase font-bold tracking-widest text-emerald-500 bg-emerald-500/5 rounded-md hover:bg-emerald-500/10 transition-all"
-                >
-                  Open Ledger
-                </button>
-                <button
-                  onClick={() => copySpaceId(space.id)}
-                  className="p-2 text-gray-500 hover:text-white transition-colors"
-                  title="Copy Invite ID"
-                >
-                  <Share2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setDeleteTarget(space)}
-                  className="p-2 text-gray-600 hover:text-rose-500 transition-colors"
-                  title="Delete Space"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-
-        <div className="glass-card p-6 flex flex-col items-center justify-center border-dashed border-2 border-white/5 bg-transparent">
-          <div className="text-center space-y-4 w-full">
-            <h4 className="text-[10px] uppercase font-bold tracking-[0.2em] text-gray-600">Join Existing Protocol</h4>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={joinId}
-                onChange={e => setJoinId(e.target.value)}
-                placeholder="Protocol ID..."
-                className="flex-1 glass-input py-2 text-xs"
-              />
-              <button
-                onClick={joinSpace}
-                className="p-2 bg-white/5 rounded-lg text-emerald-500 hover:bg-white/10 transition-all"
-              >
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 16, alignItems: 'start' }}>
+        {/* Join panel */}
+        <GlassCard className="view-enter" style={{ padding: 22, animationDelay: '60ms' }}>
+          <div className="label-text">Join Existing Space</div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <input
+              value={joinCode}
+              onChange={e => setJoinCode(e.target.value)}
+              placeholder="Protocol ID…"
+              className="mono"
+              style={{
+                flex: 1, padding: '10px 12px', borderRadius: 10,
+                background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-edge-soft)',
+                outline: 0, fontSize: 12, color: 'var(--ink)',
+              }}
+            />
+            <button className="btn" style={{ padding: '10px 14px' }}>Join</button>
           </div>
+          <div style={{
+            marginTop: 18, padding: 12, borderRadius: 10,
+            background: 'rgba(154,140,255,0.06)',
+            border: '1px solid color-mix(in oklab, var(--violet) 30%, transparent)',
+            fontSize: 11, color: 'var(--ink-mute)', lineHeight: 1.5,
+          }}>
+            <Sparkles size={11} style={{ display: 'inline', color: '#BFB5FF', marginRight: 4, verticalAlign: -1 }} />
+            Tip: Share the space ID with collaborators. AI will auto-split shared expenses when you add receipts.
+          </div>
+        </GlassCard>
+
+        {/* Spaces list */}
+        <div style={{ display: 'grid', gap: 12 }}>
+          {spaces.length === 0 ? (
+            <GlassCard className="view-enter" style={{ padding: 40, textAlign: 'center', animationDelay: '120ms' }}>
+              <Users size={40} style={{ color: 'var(--ink-faint)', margin: '0 auto 12px', display: 'block' }} />
+              <div style={{ fontSize: 16, color: 'var(--ink-mute)', fontWeight: 600 }}>No shared spaces yet</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-faint)', marginTop: 6 }}>
+                Create or join a space to start collaborating on expenses.
+              </div>
+            </GlassCard>
+          ) : (
+            spaces.map((s, i) => {
+              const color = SPACE_COLORS[i % SPACE_COLORS.length];
+              return (
+                <GlassCard key={s.id} className="view-enter" style={{ padding: 18, animationDelay: `${120 + i * 60}ms` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    {/* Member avatars */}
+                    <div style={{ display: 'flex', marginRight: 8 }}>
+                      {Array.from({ length: Math.min(4, s.members.length) }).map((_, j) => (
+                        <div key={j} style={{
+                          width: 32, height: 32, borderRadius: '50%',
+                          background: `linear-gradient(${j * 60}deg, ${color}, ${j % 2 ? '#9A8CFF' : '#7BD9E0'})`,
+                          border: '2px solid var(--bg-1)',
+                          marginLeft: j === 0 ? 0 : -10,
+                          display: 'grid', placeItems: 'center',
+                          fontSize: 10, fontWeight: 600, color: '#04201a',
+                        }}>
+                          {String.fromCharCode(65 + j)}
+                        </div>
+                      ))}
+                      {s.members.length > 4 && (
+                        <div style={{
+                          width: 32, height: 32, borderRadius: '50%',
+                          background: 'rgba(255,255,255,0.06)',
+                          border: '2px solid var(--bg-1)', marginLeft: -10,
+                          display: 'grid', placeItems: 'center',
+                          fontSize: 10, color: 'var(--ink-mute)',
+                        }}>+{s.members.length - 4}</div>
+                      )}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div className="h-display" style={{ fontSize: 15 }}>{s.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 2 }}>
+                        {s.members.length} member{s.members.length !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => { await deleteSpace(s.id); showToast('Space deleted', 'info'); }}
+                      style={{ color: 'var(--ink-faint)', transition: 'color 0.2s' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#FF9A9A')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-faint)')}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </GlassCard>
+              );
+            })
+          )}
         </div>
       </div>
-
-      {/* Create space modal */}
-      <AnimatePresence>
-        {isCreating && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="glass-panel p-8 w-full max-w-sm space-y-6"
-            >
-              <div>
-                <h3 className="text-lg font-bold text-white uppercase tracking-tight">New Collaborative Space</h3>
-                <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest mt-1">Define shared protocol name</p>
-              </div>
-              <input
-                type="text"
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && createSpace()}
-                placeholder="e.g. Household Ledger"
-                autoFocus
-                className="w-full glass-input"
-              />
-              <div className="flex gap-4">
-                <button onClick={() => setIsCreating(false)} className="flex-1 py-3 text-[10px] uppercase tracking-widest font-bold text-gray-500 hover:text-white">Cancel</button>
-                <button onClick={createSpace} className="flex-1 py-3 bg-emerald-500 text-black rounded-lg text-[10px] uppercase tracking-widest font-bold">Initialize</button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <SpaceLedgerModal space={ledgerSpace} onClose={() => setLedgerSpace(null)} />
-
-      {/* Delete confirmation modal */}
-      <AnimatePresence>
-        {deleteTarget && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => !isDeleting && setDeleteTarget(null)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-sm glass-panel p-8 space-y-6"
-            >
-              <div>
-                <h3 className="text-base font-bold text-white uppercase tracking-tight">Delete Space</h3>
-                <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest mt-1">This action cannot be undone</p>
-              </div>
-              <p className="text-sm text-gray-400">
-                Permanently delete <span className="text-white font-bold">"{deleteTarget.name}"</span> and all its transactions? All members will lose access.
-              </p>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setDeleteTarget(null)}
-                  disabled={isDeleting}
-                  className="flex-1 py-3 text-[10px] uppercase tracking-widest font-bold text-gray-500 hover:text-white transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirmDelete}
-                  disabled={isDeleting}
-                  className="flex-[2] py-3 bg-rose-500 text-white rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] hover:scale-[1.01] active:scale-95 transition-all disabled:opacity-50"
-                >
-                  {isDeleting ? 'Deleting…' : 'Delete Space'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

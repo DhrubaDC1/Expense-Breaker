@@ -1,62 +1,200 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './AppContext';
 import { ToastProvider } from './ToastContext';
-import { CATEGORIES, EXCHANGE_RATES } from './constants';
-import { 
-  LayoutDashboard, 
-  Receipt, 
-  Target, 
-  Settings, 
-  Plus, 
-  ArrowUpRight, 
-  ArrowDownLeft,
-  Scan,
-  X,
-  CreditCard,
-  PieChart as PieChartIcon,
-  TrendingUp,
-  History,
-  Wallet,
-  Users,
-  LogOut,
-  User as UserIcon
+import {
+  LayoutDashboard, Clock, Target, Users, Settings as SettingsIcon,
+  Plus, Search, Bell, Sparkles, LogOut,
 } from 'lucide-react';
 
-// Components
 import Dashboard from './components/Dashboard';
 import Transactions from './components/Transactions';
 import Goals from './components/Goals';
 import SettingsPage from './components/Settings';
 import AddTransactionModal from './components/AddTransactionModal';
-import BatchImportModal from './components/BatchImportModal';
 import Login from './components/Login';
 import SharedSpaces from './components/SharedSpaces';
 import LockScreen from './components/LockScreen';
+import Coach, { CoachFAB } from './components/Coach';
 
 import { Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { AnimatePresence, motion } from 'motion/react';
 import { useWebHaptics } from 'web-haptics/react';
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+type Tab = 'dashboard' | 'activity' | 'goals' | 'spaces' | 'settings';
+
+const DOCK_TABS: Array<{ id: Tab; Icon: typeof LayoutDashboard; label: string }> = [
+  { id: 'dashboard', Icon: LayoutDashboard, label: 'Dashboard' },
+  { id: 'activity',  Icon: Clock,           label: 'Activity'  },
+  { id: 'goals',     Icon: Target,          label: 'Goals'     },
+  { id: 'spaces',    Icon: Users,           label: 'Spaces'    },
+  { id: 'settings',  Icon: SettingsIcon,    label: 'Settings'  },
+];
+
+function TopBar({ onCoach, onSignOut }: { onCoach: () => void; onSignOut: () => void }) {
+  const { user } = useApp();
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '20px 32px', position: 'relative', zIndex: 5,
+    }}>
+      {/* Logo + search */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: 12,
+          background: 'linear-gradient(160deg, #15F0AE 0%, #0AB382 100%)',
+          display: 'grid', placeItems: 'center',
+          boxShadow: '0 10px 24px -8px rgba(16,229,163,0.55), inset 0 1px 0 rgba(255,255,255,0.4)',
+        }}>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#04201a" strokeWidth="2.2" strokeLinejoin="round">
+            <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" fill="rgba(4,32,26,0.15)" />
+            <path d="M8 12l3 3 5-6" strokeLinecap="round" />
+          </svg>
+        </div>
+        <div>
+          <div className="h-display" style={{ fontSize: 18 }}>ClearLedger</div>
+          <div className="label-text" style={{ fontSize: 9, marginTop: 2 }}>Operational Platform · Liquid</div>
+        </div>
+        <div style={{ width: 1, height: 26, background: 'var(--glass-edge-soft)', margin: '0 8px' }} />
+        <button
+          onClick={onCoach}
+          className="glass-spec"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '8px 14px 8px 12px', borderRadius: 12,
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid var(--glass-edge-soft)',
+            color: 'var(--ink-mute)', fontSize: 12,
+            minWidth: 260,
+          }}
+        >
+          <Search size={14} />
+          <span style={{ flex: 1, textAlign: 'left' }}>Ask anything about your finances…</span>
+          <kbd style={{ fontSize: 10, padding: '2px 6px', borderRadius: 5, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-edge-soft)' }}>⌘K</kbd>
+        </button>
+      </div>
+
+      {/* Right side */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="chip chip-mint" style={{ fontSize: 10 }}>
+          <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--mint)', boxShadow: '0 0 8px var(--mint)' }} />
+          Live Sync
+        </div>
+        <button className="glass-spec" style={{
+          width: 38, height: 38, borderRadius: 12,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid var(--glass-edge-soft)',
+          display: 'grid', placeItems: 'center',
+          color: 'var(--ink-mute)',
+        }}>
+          <Bell size={16} />
+        </button>
+        <button onClick={onCoach} className="glass-spec" style={{
+          width: 38, height: 38, borderRadius: 12,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid var(--glass-edge-soft)',
+          display: 'grid', placeItems: 'center',
+          color: 'var(--ink-mute)',
+        }}>
+          <div style={{ position: 'relative' }}>
+            <Sparkles size={16} />
+            <span style={{ position: 'absolute', top: -4, right: -5, width: 7, height: 7, borderRadius: 999, background: 'var(--mint)', boxShadow: '0 0 6px var(--mint)' }} />
+          </div>
+        </button>
+        <div style={{ width: 1, height: 26, background: 'var(--glass-edge-soft)', margin: '0 4px' }} />
+        <div style={{ textAlign: 'right', fontSize: 11, lineHeight: 1.4 }}>
+          <div style={{ color: 'var(--ink-mute)' }}>{user?.email}</div>
+          <div className="mono" style={{ color: 'var(--mint)', letterSpacing: '0.06em', fontSize: 10 }}>● ACTIVE SESSION</div>
+        </div>
+        <button onClick={onSignOut} className="glass-spec" style={{
+          width: 38, height: 38, borderRadius: 12,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid var(--glass-edge-soft)',
+          display: 'grid', placeItems: 'center',
+          color: 'var(--ink-mute)',
+        }}>
+          <LogOut size={15} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Dock({ tab, setTab, onAdd, onCoach }: {
+  tab: Tab;
+  setTab: (t: Tab) => void;
+  onAdd: () => void;
+  onCoach: () => void;
+}) {
+  const { trigger } = useWebHaptics();
+  const idx = DOCK_TABS.findIndex(t => t.id === tab);
+  return (
+    <div style={{ position: 'fixed', left: '50%', bottom: 28, transform: 'translateX(-50%)', zIndex: 40 }}>
+      <div className="dock">
+        <div className="dock-indicator" style={{ left: 8 + idx * 46, width: 42 }} />
+        {DOCK_TABS.map(({ id, Icon, label }) => (
+          <button
+            key={id}
+            className={`dock-btn${id === tab ? ' active' : ''}`}
+            onClick={() => { if (id !== tab) trigger('selection'); setTab(id); }}
+            aria-label={label}
+            style={{ color: id === tab ? 'var(--mint)' : 'var(--ink-mute)' }}
+          >
+            <Icon size={18} />
+            <span style={{
+              position: 'absolute', bottom: -22, left: '50%', transform: 'translateX(-50%)',
+              fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: id === tab ? 'var(--mint)' : 'transparent',
+              transition: 'color 0.3s var(--ease-soft)',
+              pointerEvents: 'none', whiteSpace: 'nowrap',
+            }}>{label}</span>
+          </button>
+        ))}
+        <div style={{ width: 1, height: 26, background: 'var(--glass-edge)', margin: '0 4px' }} />
+        <button
+          className="dock-btn"
+          onClick={onCoach}
+          aria-label="AI Coach"
+          style={{ color: 'var(--violet)' }}
+        >
+          <Sparkles size={18} />
+        </button>
+        <button
+          onClick={() => { trigger('medium'); onAdd(); }}
+          aria-label="Add transaction"
+          style={{
+            width: 42, height: 42, borderRadius: 14,
+            background: 'linear-gradient(180deg, #1AF2B0, #0AB382)',
+            color: '#04201a', display: 'grid', placeItems: 'center',
+            boxShadow: '0 10px 24px -6px rgba(16,229,163,0.65), inset 0 1px 0 rgba(255,255,255,0.45)',
+            transition: 'transform 0.2s var(--ease-back)',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.06)')}
+          onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+        >
+          <Plus size={20} />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'goals' | 'spaces' | 'settings'>('dashboard');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>('dashboard');
+  const [addOpen, setAddOpen] = useState(false);
+  const [coachOpen, setCoachOpen] = useState(false);
   const { user, isAuthLoading, signOut } = useApp();
-  const { trigger } = useWebHaptics();
 
   const [biometricCredential] = useState<string | null>(() => localStorage.getItem('biometric_lock_credential'));
   const [isUnlocked, setIsUnlocked] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setCoachOpen(true); }
+      if (e.key === 'Escape') { setCoachOpen(false); setAddOpen(false); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   if (biometricCredential && !isUnlocked) {
     return <LockScreen credentialId={biometricCredential} onUnlock={() => setIsUnlocked(true)} />;
@@ -64,144 +202,65 @@ function AppContent() {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+      <div style={{ minHeight: '100vh', background: 'var(--bg-0)', display: 'grid', placeItems: 'center' }}>
+        <Loader2 size={32} style={{ color: 'var(--mint)', animation: 'spin 1s linear infinite' }} />
       </div>
     );
   }
 
-  if (!user) {
-    return <Login />;
-  }
-
-  const tabs = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { id: 'transactions', icon: History, label: 'Activity' },
-    { id: 'goals', icon: Target, label: 'Goals' },
-    { id: 'spaces', icon: Users, label: 'Collaborate' },
-    { id: 'settings', icon: Settings, label: 'Settings' },
-  ];
+  if (!user) return <Login />;
 
   return (
-    <div className="relative min-h-screen pb-24">
-      {/* Header */}
-      <header className="p-4 md:p-8 flex justify-between items-center max-w-7xl mx-auto">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
-            <div className="w-4 h-4 bg-black/20 rounded-sm rotate-45"></div>
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white uppercase">
-              ClearLedger
-            </h1>
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">Operational Platform</p>
-          </div>
-        </div>
-        
-        <div className="flex gap-4 items-center">
-          <div className="hidden md:flex flex-col items-end mr-2">
-            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">{user?.email}</p>
-            <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Active Session</p>
-          </div>
-          <button 
-            onClick={() => {
-              trigger("warning");
-              signOut();
-            }}
-            className="p-2.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all text-gray-400 hover:text-rose-500"
-            title="Terminate Session"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
-        </div>
-      </header>
-      
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 md:px-6">
-        <AnimatePresence mode="wait">
-          {activeTab === 'dashboard' && (
-            <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <Dashboard />
-            </motion.div>
-          )}
-          {activeTab === 'transactions' && (
-            <motion.div key="transactions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <Transactions />
-            </motion.div>
-          )}
-          {activeTab === 'goals' && (
-            <motion.div key="goals" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <Goals />
-            </motion.div>
-          )}
-          {activeTab === 'spaces' && (
-            <motion.div key="spaces" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <SharedSpaces />
-            </motion.div>
-          )}
-          {activeTab === 'settings' && (
-            <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <SettingsPage />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
+    <>
+      {/* Animated mesh background */}
+      <div className="mesh" aria-hidden="true">
+        <div className="orb-3" />
+        <div className="glow-line gl-1" />
+        <div className="glow-line gl-2" />
+        <div className="grain" />
+        <div className="mesh-veil" />
+      </div>
 
-      {/* Navigation Bar */}
-      <nav className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-[#111111] border border-white/10 rounded-2xl shadow-2xl z-40 w-[95%] sm:w-auto max-w-fit justify-center">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => {
-                if (activeTab !== tab.id) trigger("selection");
-                setActiveTab(tab.id as any);
-              }}
-              className={cn(
-                "p-2.5 sm:p-3.5 rounded-xl transition-all duration-200 relative group",
-                activeTab === tab.id ? "bg-white/5 text-emerald-500 shadow-inner" : "text-gray-500 hover:text-gray-300"
-              )}
-            >
-              <Icon className="w-5 h-5" />
-              {activeTab === tab.id && (
-                <motion.div
-                  layoutId="active-tab"
-                  className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-0.5 bg-emerald-500 rounded-full"
-                />
-              )}
-            </button>
-          );
-        })}
-        
-        <div className="w-px h-6 bg-white/5 mx-1.5" />
-        
-        <button 
-          onClick={() => {
-            trigger("light");
-            setIsBatchModalOpen(true);
-          }}
-          className="p-2.5 sm:p-3.5 bg-white/5 text-emerald-500 rounded-xl hover:bg-white/10 transition-all border border-white/5 group"
-          title="Batch Import"
-        >
-          <History className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
+      {/* App layer */}
+      <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
+        <TopBar onCoach={() => setCoachOpen(true)} onSignOut={signOut} />
 
-        <button 
-          onClick={() => {
-            trigger("medium");
-            setIsAddModalOpen(true);
-          }}
-          className="p-2.5 sm:p-3.5 bg-emerald-500 text-black rounded-xl hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
-      </nav>
+        <main style={{ paddingBottom: 140 }}>
+          <AnimatePresence mode="wait">
+            {tab === 'dashboard' && (
+              <motion.div key="dash" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
+                <Dashboard onCoach={() => setCoachOpen(true)} />
+              </motion.div>
+            )}
+            {tab === 'activity' && (
+              <motion.div key="act" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
+                <Transactions />
+              </motion.div>
+            )}
+            {tab === 'goals' && (
+              <motion.div key="goals" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
+                <Goals />
+              </motion.div>
+            )}
+            {tab === 'spaces' && (
+              <motion.div key="spaces" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
+                <SharedSpaces />
+              </motion.div>
+            )}
+            {tab === 'settings' && (
+              <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
+                <SettingsPage />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
 
-      {/* Modals */}
-      <AddTransactionModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
-      <BatchImportModal isOpen={isBatchModalOpen} onClose={() => setIsBatchModalOpen(false)} />
-    </div>
+        <CoachFAB onClick={() => setCoachOpen(true)} />
+        <Dock tab={tab} setTab={setTab} onAdd={() => setAddOpen(true)} onCoach={() => setCoachOpen(true)} />
+        <Coach open={coachOpen} onClose={() => setCoachOpen(false)} />
+        <AddTransactionModal isOpen={addOpen} onClose={() => setAddOpen(false)} />
+      </div>
+    </>
   );
 }
 
@@ -214,4 +273,3 @@ export default function App() {
     </AppProvider>
   );
 }
-
