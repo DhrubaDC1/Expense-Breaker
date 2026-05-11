@@ -4,9 +4,10 @@ import { useToast } from '../ToastContext';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Bell, Shield, Database, Globe, Moon, User, LogOut,
-  ChevronRight, Cpu, Smartphone, Cloud, X, Check,
+  ChevronRight, Cpu, Smartphone, Cloud, X, Check, Lock, Fingerprint
 } from 'lucide-react';
 import { EXCHANGE_RATES } from '../constants';
+import { isBiometricAvailable, registerBiometricLock } from '../lib/webauthn';
 
 type Modal = 'appearance' | 'currency' | 'encryption' | 'ai' | 'biometric' | null;
 
@@ -47,7 +48,38 @@ export default function Settings() {
     toast('Real-time sync is active via Firebase Firestore', 'info');
   };
 
+  const [biometricCredential, setBiometricCredential] = useState<string | null>(
+    localStorage.getItem('biometric_lock_credential')
+  );
+
+  const [isBiometricSupported, setIsBiometricSupported] = useState(false);
+
+  React.useEffect(() => {
+    isBiometricAvailable().then(setIsBiometricSupported);
+  }, []);
+
+  const handleToggleBiometric = async () => {
+    if (biometricCredential) {
+      // Disable
+      localStorage.removeItem('biometric_lock_credential');
+      setBiometricCredential(null);
+      toast('Biometric lock disabled', 'success');
+    } else {
+      // Enable
+      try {
+        const credentialId = await registerBiometricLock();
+        localStorage.setItem('biometric_lock_credential', credentialId);
+        setBiometricCredential(credentialId);
+        toast('Biometric lock enabled', 'success');
+      } catch (err: any) {
+        console.error(err);
+        toast(err.message || 'Failed to setup biometric lock', 'error');
+      }
+    }
+  };
+
   const notifLabel = notifPermission === 'granted' ? 'Enabled' : notifPermission === 'denied' ? 'Blocked' : 'Off';
+  const biometricLabel = biometricCredential ? 'Enabled' : 'Off';
 
   const sections = [
     {
@@ -61,7 +93,7 @@ export default function Settings() {
     {
       title: 'Security',
       items: [
-        { icon: Shield, label: 'Biometric Lock', value: 'Coming Soon', action: () => setActiveModal('biometric') },
+        { icon: Shield, label: 'Biometric Lock', value: biometricLabel, action: () => setActiveModal('biometric') },
         { icon: Database, label: 'Local Encryption', value: 'AES-GCM 256', action: () => setActiveModal('encryption') },
         { icon: Cloud, label: 'Cloud Sync', value: 'Active', action: handleCloudSync },
       ],
@@ -243,10 +275,37 @@ export default function Settings() {
                     <h3 className="text-base font-bold text-white uppercase tracking-tight">Biometric Lock</h3>
                     <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest mt-1">Device authentication</p>
                   </div>
-                  <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center py-8 space-y-3">
-                    <Shield className="w-10 h-10 text-white/20 mx-auto" />
-                    <p className="text-sm text-white/60">Biometric lock using the Web Authentication API (WebAuthn) is coming in a future update.</p>
-                    <p className="text-[10px] text-gray-600 uppercase tracking-widest font-bold">Face ID · Touch ID · PIN</p>
+                  <div className="p-6 rounded-xl bg-white/[0.02] border border-white/5 text-center space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto border border-emerald-500/20">
+                      <Fingerprint className="w-8 h-8 text-emerald-500" />
+                    </div>
+                    <p className="text-sm text-gray-400">
+                      Secure your app using your device's built-in biometric authentication (Face ID, Touch ID, or PIN).
+                    </p>
+                    
+                    {!isBiometricSupported ? (
+                      <p className="text-xs text-rose-500 mt-4 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20">
+                        Biometric authentication is not supported or not available on this device.
+                      </p>
+                    ) : (
+                      <button
+                        onClick={handleToggleBiometric}
+                        className={`w-full mt-4 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 ${
+                          biometricCredential 
+                            ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500/20' 
+                            : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20'
+                        }`}
+                      >
+                        {biometricCredential ? (
+                          <>Disable Lock</>
+                        ) : (
+                          <>
+                            <Lock className="w-4 h-4" />
+                            Enable Lock
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </>
               )}
