@@ -3,20 +3,22 @@ import { Plus, Sparkles, Trash2, Users } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { useToast } from '../ToastContext';
 import { GlassCard } from './ui';
+import { useIsMobile } from '../lib/useIsMobile';
 
 const SPACE_COLORS = ['#10E5A3', '#FF7AC6', '#9A8CFF', '#FFC062', '#7BD9E0'];
 
-export default function SharedSpaces() {
+export default function SharedSpaces({ contentPad = '0 32px' }: { contentPad?: string }) {
   const { spaces, deleteSpace } = useApp();
   const { showToast } = useToast();
+  const isMobile = useIsMobile();
   const [joinCode, setJoinCode] = useState('');
 
   return (
-    <div style={{ padding: '0 32px' }}>
+    <div style={{ padding: contentPad }}>
       {/* Header */}
       <div className="view-enter" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 18 }}>
         <div>
-          <div className="h-display" style={{ fontSize: 40 }}>Collaborative Spaces</div>
+          <div className="h-display" style={{ fontSize: isMobile ? 26 : 40 }}>Collaborative Spaces</div>
           <div className="label-text" style={{ marginTop: 4 }}>
             Multi-user real-time reconciliation · AI auto-split
           </div>
@@ -26,7 +28,7 @@ export default function SharedSpaces() {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1.4fr', gap: 16, alignItems: 'start' }}>
         {/* Join panel */}
         <GlassCard className="view-enter" style={{ padding: 22, animationDelay: '60ms' }}>
           <div className="label-text">Join Existing Space</div>

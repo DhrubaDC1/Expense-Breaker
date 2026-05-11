@@ -3,12 +3,14 @@ import { Plus, Sparkles, Trash2, Target } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { useToast } from '../ToastContext';
 import { GlassCard, LiquidBar } from './ui';
+import { useIsMobile } from '../lib/useIsMobile';
 
 const GOAL_COLORS = ['#FF7AC6', '#10E5A3', '#9A8CFF', '#FFC062', '#7BD9E0'];
 
 function AddGoalModal({ onClose }: { onClose: () => void }) {
   const { addGoal } = useApp();
   const { showToast } = useToast();
+  const isMobile = useIsMobile();
   const [name, setName] = useState('');
   const [target, setTarget] = useState('');
   const [current, setCurrent] = useState('');
@@ -25,7 +27,7 @@ function AddGoalModal({ onClose }: { onClose: () => void }) {
   return (
     <>
       <div className="scrim" onClick={onClose} />
-      <div style={{ position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', zIndex: 95, width: 480, animation: 'fadeIn 0.4s var(--ease-spring) both' }}>
+      <div style={{ position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', zIndex: 95, width: isMobile ? '92vw' : 480, animation: 'fadeIn 0.4s var(--ease-spring) both' }}>
         <GlassCard strong style={{ padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
             <div className="h-display" style={{ fontSize: 20 }}>New Goal</div>
@@ -57,17 +59,18 @@ function AddGoalModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-export default function Goals() {
+export default function Goals({ contentPad = '0 32px' }: { contentPad?: string }) {
   const { goals, deleteGoal } = useApp();
   const { showToast } = useToast();
+  const isMobile = useIsMobile();
   const [addOpen, setAddOpen] = useState(false);
 
   return (
-    <div style={{ padding: '0 32px' }}>
+    <div style={{ padding: contentPad }}>
       {/* Header */}
       <div className="view-enter" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 18 }}>
         <div>
-          <div className="h-display" style={{ fontSize: 40 }}>Financial Goals</div>
+          <div className="h-display" style={{ fontSize: isMobile ? 28 : 40 }}>Financial Goals</div>
           <div className="label-text" style={{ marginTop: 4 }}>AI-coached pathing toward your targets</div>
         </div>
         <button className="btn btn-primary" onClick={() => setAddOpen(true)} style={{ padding: '10px 14px' }}>

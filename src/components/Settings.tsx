@@ -61,7 +61,7 @@ function Row({
   );
 }
 
-export default function Settings() {
+export default function Settings({ contentPad = '0 32px' }: { contentPad?: string }) {
   const { user, currency, setCurrency, signOut } = useApp();
   const [aiAuto, setAiAuto] = useState(true);
   const [aiCoach, setAiCoach] = useState(true);
@@ -72,7 +72,7 @@ export default function Settings() {
   const initial = user?.displayName?.charAt(0) || user?.email?.charAt(0) || '?';
 
   return (
-    <div style={{ padding: '0 32px', maxWidth: 880, margin: '0 auto' }}>
+    <div style={{ padding: contentPad, maxWidth: 880, margin: '0 auto' }}>
       {/* Profile card */}
       <GlassCard className="view-enter" style={{ padding: 30, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>

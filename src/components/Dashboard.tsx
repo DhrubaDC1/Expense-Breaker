@@ -4,6 +4,7 @@ import { useApp } from '../AppContext';
 import { CATEGORIES } from '../constants';
 import { GlassCard, AnimatedNumber, Sparkline, Donut, LiquidBar } from './ui';
 import { format, subDays, parseISO } from 'date-fns';
+import { useIsMobile } from '../lib/useIsMobile';
 
 /* Mini virtual card art */
 function VirtualCard() {
@@ -28,7 +29,7 @@ function VirtualCard() {
   );
 }
 
-function KpiLiquidity({ currency }: { currency: string }) {
+function KpiLiquidity({ currency, isMobile }: { currency: string; isMobile: boolean }) {
   const { transactions } = useApp();
   const inflow  = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const outflow = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
@@ -44,7 +45,7 @@ function KpiLiquidity({ currency }: { currency: string }) {
         <div className="chip chip-mint">+{momPct}% MoM</div>
       </div>
       <div style={{ marginTop: 14, display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-        <div className="h-display" style={{ fontSize: 48, letterSpacing: '-0.03em' }}>
+        <div className="h-display" style={{ fontSize: isMobile ? 34 : 48, letterSpacing: '-0.03em' }}>
           {currency}&nbsp;<AnimatedNumber value={balance} />
         </div>
       </div>
@@ -77,12 +78,12 @@ function KpiLiquidity({ currency }: { currency: string }) {
           </div>
         </div>
       </div>
-      <VirtualCard />
+      {!isMobile && <VirtualCard />}
     </GlassCard>
   );
 }
 
-function KpiEfficiency({ currency }: { currency: string }) {
+function KpiEfficiency({ currency, isMobile }: { currency: string; isMobile: boolean }) {
   const { transactions } = useApp();
 
   const last14 = useMemo(() => {
@@ -106,7 +107,7 @@ function KpiEfficiency({ currency }: { currency: string }) {
         <div className="chip chip-mint">AI-scored</div>
       </div>
       <div style={{ marginTop: 14, display: 'flex', alignItems: 'baseline', gap: 10 }}>
-        <div className="h-display" style={{ fontSize: 48, letterSpacing: '-0.03em' }}>
+        <div className="h-display" style={{ fontSize: isMobile ? 34 : 48, letterSpacing: '-0.03em' }}>
           <AnimatedNumber value={efficiency} />%
         </div>
         <div style={{ color: 'var(--mint)', fontSize: 12 }} className="mono">
@@ -458,18 +459,19 @@ function LiveLedger() {
   );
 }
 
-export default function Dashboard({ onCoach }: { onCoach?: () => void }) {
+export default function Dashboard({ onCoach, contentPad = '0 32px' }: { onCoach?: () => void; contentPad?: string }) {
   const { currency } = useApp();
+  const isMobile = useIsMobile();
   return (
-    <div style={{ padding: '0 32px', display: 'grid', gap: 16 }}>
+    <div style={{ padding: contentPad, display: 'grid', gap: 16 }}>
       {/* Row 1: KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 0.9fr', gap: 16 }}>
-        <KpiLiquidity currency={currency} />
-        <KpiEfficiency currency={currency} />
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr 0.9fr', gap: 16 }}>
+        <KpiLiquidity currency={currency} isMobile={isMobile} />
+        <KpiEfficiency currency={currency} isMobile={isMobile} />
         <KpiAllocation />
       </div>
       {/* Row 2: forecast + insights */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.8fr 1fr', gap: 16 }}>
         <ForecastCard />
         <InsightsPanel onCoach={onCoach || (() => {})} />
       </div>

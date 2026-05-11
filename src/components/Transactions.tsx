@@ -3,9 +3,11 @@ import { Search, Sparkles, Trash2 } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { CATEGORIES } from '../constants';
 import { GlassCard } from './ui';
+import { useIsMobile } from '../lib/useIsMobile';
 
-export default function Transactions() {
+export default function Transactions({ contentPad = '0 32px' }: { contentPad?: string }) {
   const { transactions, deleteTransaction, currency } = useApp();
+  const isMobile = useIsMobile();
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('all');
 
@@ -20,11 +22,11 @@ export default function Transactions() {
   const net = filtered.reduce((s, t) => t.type === 'income' ? s + t.amount : s - t.amount, 0);
 
   return (
-    <div style={{ padding: '0 32px' }}>
+    <div style={{ padding: contentPad }}>
       {/* Header */}
       <div className="view-enter" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 18 }}>
         <div>
-          <div className="h-display" style={{ fontSize: 40 }}>Activity Log</div>
+          <div className="h-display" style={{ fontSize: isMobile ? 28 : 40 }}>Activity Log</div>
           <div className="label-text" style={{ marginTop: 4 }}>
             Real-time ledger · {transactions.length} entries · AI-classified
           </div>
@@ -86,22 +88,24 @@ export default function Transactions() {
           })}
         </div>
 
-        {/* Table header */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1.6fr 1fr 1fr 1fr 0.5fr',
-          gap: 10,
-          padding: '8px 10px',
-          fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase',
-          color: 'var(--ink-faint)',
-          borderBottom: '1px solid var(--glass-edge-soft)',
-        }}>
-          <div>Note / Merchant</div>
-          <div>Category</div>
-          <div>Date</div>
-          <div style={{ textAlign: 'right' }}>Value</div>
-          <div style={{ textAlign: 'right' }}>Del</div>
-        </div>
+        {/* Table header — desktop only */}
+        {!isMobile && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1.6fr 1fr 1fr 1fr 0.5fr',
+            gap: 10,
+            padding: '8px 10px',
+            fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: 'var(--ink-faint)',
+            borderBottom: '1px solid var(--glass-edge-soft)',
+          }}>
+            <div>Note / Merchant</div>
+            <div>Category</div>
+            <div>Date</div>
+            <div style={{ textAlign: 'right' }}>Value</div>
+            <div style={{ textAlign: 'right' }}>Del</div>
+          </div>
+        )}
 
         {/* Rows */}
         <div>
@@ -109,7 +113,60 @@ export default function Transactions() {
             <div style={{ padding: '24px 10px', textAlign: 'center', color: 'var(--ink-faint)', fontSize: 12 }}>
               {transactions.length === 0 ? 'No transactions yet. Add your first entry!' : 'No matches.'}
             </div>
+          ) : isMobile ? (
+            /* Mobile: card rows */
+            filtered.map((t, i) => {
+              const catInfo = CATEGORIES.find(c => c.name === t.category);
+              const color = catInfo?.color || '#8a9892';
+              return (
+                <div
+                  key={t.id}
+                  className="view-enter"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 10px',
+                    borderBottom: '1px solid rgba(255,255,255,0.03)',
+                    animationDelay: `${i * 30}ms`,
+                  }}
+                >
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                    display: 'grid', placeItems: 'center',
+                    background: `color-mix(in oklab, ${color} 14%, transparent)`,
+                    color, border: `1px solid color-mix(in oklab, ${color} 25%, transparent)`,
+                    fontSize: 13, fontWeight: 600,
+                  }}>
+                    {t.category?.charAt(0)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--ink)' }}>
+                      {t.note || t.category}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--ink-faint)', marginTop: 2 }}>
+                      {t.category} · {t.date}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    <div className="mono" style={{
+                      fontSize: 13, fontWeight: 500,
+                      color: t.type === 'income' ? 'var(--mint)' : 'var(--ink)',
+                    }}>
+                      {t.type === 'income' ? '+' : '−'}{t.currency}&nbsp;{t.amount.toLocaleString()}
+                    </div>
+                    <button
+                      onClick={() => deleteTransaction(t.id)}
+                      style={{ color: 'var(--ink-faint)', padding: 6, borderRadius: 6, transition: 'color 0.2s' }}
+                      onTouchStart={e => (e.currentTarget.style.color = '#FF9A9A')}
+                      onTouchEnd={e => (e.currentTarget.style.color = 'var(--ink-faint)')}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
           ) : (
+            /* Desktop: table rows */
             filtered.map((t, i) => {
               const catInfo = CATEGORIES.find(c => c.name === t.category);
               const color = catInfo?.color || '#8a9892';

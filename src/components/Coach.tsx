@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, X, Mic, Send } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { chatWithCoach } from '../services/aiService';
+import { useIsMobile } from '../lib/useIsMobile';
 
 const SUGGESTIONS = [
   'Where am I overspending this week?',
@@ -92,6 +93,7 @@ function MessageBubble({ m, idx }: { m: Message; idx: number }) {
 
 export default function Coach({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { transactions, goals, currency, user } = useApp();
+  const isMobile = useIsMobile();
 
   const inflow = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const outflow = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
@@ -139,12 +141,16 @@ export default function Coach({ open, onClose }: { open: boolean; onClose: () =>
   return (
     <>
       <div className="scrim" onClick={onClose} />
-      <div style={{
+      <div style={isMobile ? {
+        position: 'fixed', left: 0, right: 0, bottom: 0, top: 0,
+        zIndex: 90,
+        animation: 'coachIn 0.5s var(--ease-spring) both',
+      } : {
         position: 'fixed', right: 24, bottom: 24, top: 24,
         width: 420, zIndex: 90,
         animation: 'coachIn 0.5s var(--ease-spring) both',
       }}>
-        <div className="glass glass-strong" style={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 22, overflow: 'hidden' }}>
+        <div className="glass glass-strong" style={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: isMobile ? 0 : 22, overflow: 'hidden' }}>
           {/* Header */}
           <div style={{
             padding: '16px 20px',
