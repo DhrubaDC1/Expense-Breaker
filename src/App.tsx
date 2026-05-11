@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { AppProvider, useApp } from './AppContext';
+import { ToastProvider } from './ToastContext';
 import { CATEGORIES, EXCHANGE_RATES } from './constants';
 import { 
   LayoutDashboard, 
@@ -185,7 +186,9 @@ function AppContent() {
 export default function App() {
   return (
     <AppProvider>
-      <AppContent />
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
     </AppProvider>
   );
 }

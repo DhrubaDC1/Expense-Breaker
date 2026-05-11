@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Transaction, Budget, Goal } from './types';
+import { Transaction, Budget, Goal, SharedSpace } from './types';
 import { DEFAULT_CURRENCY } from './constants';
 import { 
   db, 
@@ -8,14 +8,15 @@ import {
   handleRedirectResult,
   logout 
 } from './lib/firebase';
-import { 
-  collection, 
-  onSnapshot, 
-  setDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
+import {
+  collection,
+  onSnapshot,
+  setDoc,
+  deleteDoc,
+  doc,
+  query,
   orderBy,
+  where,
   runTransaction
 } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -37,6 +38,11 @@ interface AppContextType {
   deleteTransaction: (id: string) => Promise<void>;
   budgets: Budget[];
   goals: Goal[];
+  addGoal: (g: Omit<Goal, 'id'>) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
+  updateGoal: (id: string, data: Partial<Omit<Goal, 'id'>>) => Promise<void>;
+  spaces: SharedSpace[];
+  deleteSpace: (id: string) => Promise<void>;
   currency: string;
   setCurrency: (c: string) => void;
   isLoading: boolean;
@@ -67,6 +73,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [spaces, setSpaces] = useState<SharedSpace[]>([]);
   const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -86,6 +93,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setTransactions([]);
         setBudgets([]);
         setGoals([]);
+        setSpaces([]);
       }
     });
     return unsubscribe;
@@ -124,8 +132,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return unsubscribe;
   }, [user]);
 
-  // Sync Budgets & Goals (Simplified for now, similar pattern)
-  // ...
+  // Sync Goals
+  useEffect(() => {
+    if (!user) return;
+    const path = `users/${user.uid}/goals`;
+    const unsub = onSnapshot(collection(db, path), (snapshot) => {
+      setGoals(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Goal)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
+    return unsub;
+  }, [user]);
+
+  // Sync Spaces
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, 'spaces'), where('members', 'array-contains', user.uid));
+    const unsub = onSnapshot(q, (snapshot) => {
+      setSpaces(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as SharedSpace)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'spaces');
+    });
+    return unsub;
+  }, [user]);
 
   const addTransaction = useCallback(async (t: Omit<Transaction, 'id'>) => {
     if (!user) return;
@@ -165,6 +194,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [user]);
 
+  const addGoal = useCallback(async (g: Omit<Goal, 'id'>) => {
+    if (!user) return;
+    const id = crypto.randomUUID();
+    const path = `users/${user.uid}/goals/${id}`;
+    try {
+      await setDoc(doc(db, path), { ...g, userId: user.uid });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  }, [user]);
+
+  const deleteGoal = useCallback(async (id: string) => {
+    if (!user) return;
+    const path = `users/${user.uid}/goals/${id}`;
+    try {
+      await deleteDoc(doc(db, path));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  }, [user]);
+
+  const deleteSpace = useCallback(async (id: string) => {
+    if (!user) return;
+    const path = `spaces/${id}`;
+    try {
+      await deleteDoc(doc(db, path));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  }, [user]);
+
+  const updateGoal = useCallback(async (id: string, data: Partial<Omit<Goal, 'id'>>) => {
+    if (!user) return;
+    const path = `users/${user.uid}/goals/${id}`;
+    try {
+      await setDoc(doc(db, path), data, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  }, [user]);
+
   const signIn = async () => {
     if (isSigningIn) return;
     setIsSigningIn(true);
@@ -197,6 +267,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleteTransaction,
       budgets,
       goals,
+      addGoal,
+      deleteGoal,
+      updateGoal,
+      spaces,
+      deleteSpace,
       currency,
       setCurrency,
       isLoading,
