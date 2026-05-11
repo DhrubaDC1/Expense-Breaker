@@ -131,16 +131,6 @@ input, textarea { font: inherit; color: inherit; }
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.9'/></svg>");
 }
-.mesh .glow-line {
-  position: absolute;
-  left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(16,229,163,0.35), transparent);
-  filter: blur(0.5px);
-}
-.mesh .glow-line.gl-1 { top: 32%; animation: sweep 14s linear infinite; }
-.mesh .glow-line.gl-2 { top: 68%; animation: sweep 18s linear infinite reverse; opacity: 0.5; }
-
 @keyframes drift1 {
   0%   { transform: translate3d(0,0,0) scale(1); }
   100% { transform: translate3d(18vmin, 12vmin, 0) scale(1.15); }
@@ -152,10 +142,6 @@ input, textarea { font: inherit; color: inherit; }
 @keyframes drift3 {
   0%   { transform: translate3d(0,0,0) scale(0.9); }
   100% { transform: translate3d(-22vmin, 14vmin, 0) scale(1.2); }
-}
-@keyframes sweep {
-  0%   { transform: translateX(-30%); }
-  100% { transform: translateX(30%); }
 }
 
 /* =========================================================
@@ -372,6 +358,49 @@ input, textarea { font: inherit; color: inherit; }
   -webkit-backdrop-filter: blur(8px);
   z-index: 80;
   animation: fadeIn 0.3s var(--ease-soft) both;
+}
+
+/* Log Entry Modal — centered on desktop, bottom-sheet on mobile */
+.log-entry-modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 95;
+  width: 560px;
+  max-width: 92vw;
+  animation: fadeIn 0.4s var(--ease-spring) both;
+}
+.log-entry-card {
+  max-height: calc(100svh - 64px);
+  overflow-y: auto;
+}
+.log-entry-body {
+  padding: 24px;
+}
+@media (max-width: 639px) {
+  .log-entry-modal {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    transform: none;
+    width: 100%;
+    max-width: 100%;
+    animation: slideUpSheet 0.38s var(--ease-spring) both;
+  }
+  .log-entry-card.glass {
+    border-radius: 22px 22px 0 0;
+    max-height: 92svh;
+  }
+  .log-entry-body {
+    padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+  .log-entry-tab-label { display: none; }
+}
+@keyframes slideUpSheet {
+  from { transform: translateY(105%); }
+  to   { transform: translateY(0); }
 }
 
 /* Coach orb pulse */

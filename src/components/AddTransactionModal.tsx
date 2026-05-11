@@ -149,13 +149,9 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
   return (
     <>
       <div className="scrim" onClick={onClose} />
-      <div style={{
-        position: 'fixed', left: '50%', top: '50%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: 95, width: 560, maxWidth: '92vw',
-        animation: 'fadeIn 0.4s var(--ease-spring) both',
-      }}>
-        <GlassCard strong style={{ padding: 24 }}>
+      <div className="log-entry-modal">
+        <GlassCard strong className="log-entry-card">
+        <div className="log-entry-body">
           {/* Title */}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <div>
@@ -197,7 +193,7 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 transition: 'color 0.3s',
               }}>
-                <Icon size={13} /> {label}
+                <Icon size={13} /> <span className="log-entry-tab-label">{label}</span>
               </button>
             ))}
           </div>
@@ -342,6 +338,7 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
               </form>
             )}
           </div>
+        </div>
         </GlassCard>
       </div>
     </>
