@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { Goal } from '../types';
+import { useWebHaptics } from 'web-haptics/react';
 
 interface Props {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface Props {
 export default function AddGoalModal({ isOpen, onClose, goal }: Props) {
   const { addGoal, updateGoal, currency } = useApp();
   const isEdit = !!goal;
+  const { trigger } = useWebHaptics();
 
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
@@ -37,7 +39,10 @@ export default function AddGoalModal({ isOpen, onClose, goal }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !targetAmount || isSubmitting) return;
+    if (!name.trim() || !targetAmount || isSubmitting) {
+      if (!name.trim() || !targetAmount) trigger("error");
+      return;
+    }
     setIsSubmitting(true);
     try {
       if (isEdit && goal) {
@@ -54,6 +59,7 @@ export default function AddGoalModal({ isOpen, onClose, goal }: Props) {
           deadline,
         });
       }
+      trigger("success");
       onClose();
     } finally {
       setIsSubmitting(false);

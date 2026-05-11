@@ -4,6 +4,7 @@ import { X, Camera, Scan, Sparkles, Check, Loader2 } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { CATEGORIES, DEFAULT_CURRENCY } from '../constants';
 import { extractTransactionFromImage } from '../services/aiService';
+import { useWebHaptics } from 'web-haptics/react';
 
 interface Props {
   isOpen: boolean;
@@ -14,6 +15,7 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
   const { addTransaction, currency } = useApp();
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState('');
+  const { trigger } = useWebHaptics();
   const [category, setCategory] = useState(CATEGORIES[0].name);
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -22,7 +24,10 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount) return;
+    if (!amount) {
+      trigger("error");
+      return;
+    }
 
     addTransaction({
       amount: parseFloat(amount),
@@ -37,6 +42,7 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
     // Reset and close
     setAmount('');
     setNote('');
+    trigger("success");
     onClose();
   };
 
@@ -95,7 +101,10 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
           {/* Toggle Type */}
           <div className="flex p-1 bg-black/40 border border-white/5 rounded-xl mb-10">
             <button
-              onClick={() => setType('expense')}
+              onClick={() => {
+                if (type !== 'expense') trigger("selection");
+                setType('expense');
+              }}
               className={`flex-1 py-2 rounded-lg text-[10px] uppercase font-bold tracking-widest transition-all ${
                 type === 'expense' ? 'bg-white/5 text-emerald-500 shadow-inner' : 'text-gray-600 hover:text-gray-400'
               }`}
@@ -103,7 +112,10 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
               Debit
             </button>
             <button
-              onClick={() => setType('income')}
+              onClick={() => {
+                if (type !== 'income') trigger("selection");
+                setType('income');
+              }}
               className={`flex-1 py-2 rounded-lg text-[10px] uppercase font-bold tracking-widest transition-all ${
                 type === 'income' ? 'bg-white/5 text-emerald-500 shadow-inner' : 'text-gray-600 hover:text-gray-400'
               }`}
@@ -163,7 +175,10 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  trigger("light");
+                  fileInputRef.current?.click();
+                }}
                 disabled={isScanning}
                 className="flex-1 glass-button font-bold uppercase tracking-[0.2em] text-[10px] border-emerald-500/20 text-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10 py-4 sm:py-auto flex items-center justify-center gap-2"
               >

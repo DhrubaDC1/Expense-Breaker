@@ -2,9 +2,11 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Shield, Sparkles, LogIn, ChevronRight, Globe, Lock } from 'lucide-react';
 import { useApp } from '../AppContext';
+import { useWebHaptics } from 'web-haptics/react';
 
 export default function Login() {
   const { signIn, isAuthLoading } = useApp();
+  const { trigger } = useWebHaptics();
 
   return (
     <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6 overflow-hidden relative">
@@ -55,7 +57,10 @@ export default function Login() {
           </div>
 
           <button
-            onClick={() => signIn()}
+            onClick={() => {
+              trigger("medium");
+              signIn();
+            }}
             disabled={isAuthLoading}
             className="w-full py-4 bg-white text-black rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all shadow-[0_0_40px_rgba(255,255,255,0.1)]"
           >
