@@ -6,6 +6,8 @@
    ========================================================= */
 
 :root {
+  color-scheme: dark;
+
   /* Brand */
   --mint: #10E5A3;
   --mint-soft: #6FF0CB;
@@ -68,7 +70,16 @@ html, body {
   overflow-x: hidden;
 }
 
-body { position: relative; min-height: 100vh; }
+body {
+  position: relative;
+  min-height: 100vh;
+  /* With viewport-fit=cover the body extends behind system bars.
+     Push content inside the safe areas so nothing hides under them,
+     while the body background (#050805) fills those zones. */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
 
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
 input, textarea { font: inherit; color: inherit; }

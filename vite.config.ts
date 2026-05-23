@@ -17,8 +17,8 @@ export default defineConfig(({mode}) => {
           name: 'ClearLedger',
           short_name: 'ClearLedger',
           description: 'Premium Expense Management',
-          theme_color: '#000000',
-          background_color: '#000000',
+          theme_color: '#050805',
+          background_color: '#050805',
           display: 'standalone',
           icons: [
             {
