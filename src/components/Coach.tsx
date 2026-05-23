@@ -108,6 +108,7 @@ export default function Coach({ open, onClose }: { open: boolean; onClose: () =>
   const [busy, setBusy] = useState(false);
   const [engineState, setEngineState] = useState<EngineState>(onDeviceEngine.state);
   const [engineProgress, setEngineProgress] = useState(onDeviceEngine.progress);
+  const [engineError, setEngineError] = useState(onDeviceEngine.errorMessage);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -115,6 +116,7 @@ export default function Coach({ open, onClose }: { open: boolean; onClose: () =>
     const id = setInterval(() => {
       setEngineState(onDeviceEngine.state);
       setEngineProgress(onDeviceEngine.progress);
+      setEngineError(onDeviceEngine.errorMessage);
       if (onDeviceEngine.state === 'ready' || onDeviceEngine.state === 'error') {
         clearInterval(id);
       }
@@ -207,7 +209,7 @@ export default function Coach({ open, onClose }: { open: boolean; onClose: () =>
                   : engineState === 'ready'
                   ? 'ON-DEVICE · PRIVATE · FINANCE-GROUNDED'
                   : engineState === 'error'
-                  ? 'ENGINE ERROR · CHECK CONSOLE'
+                  ? (engineError || 'ENGINE ERROR · CHECK CONSOLE')
                   : 'INITIALIZING…'}
               </div>
             </div>

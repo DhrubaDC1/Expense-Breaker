@@ -31,6 +31,7 @@ export function setSelectedModel(id: ModelId): void {
 interface OnDeviceEngine {
   state: EngineState;
   progress: number;
+  errorMessage: string;
   init(onProgress?: (state: EngineState, progress: number) => void): Promise<void>;
   chat(messages: { role: string; content: string }[], systemPrompt: string): Promise<string>;
   reset(): void;
@@ -42,12 +43,14 @@ let initPromise: Promise<void> | null = null;
 export const onDeviceEngine: OnDeviceEngine = {
   state: 'idle',
   progress: 0,
+  errorMessage: '',
 
   reset(): void {
     engine = null;
     initPromise = null;
     onDeviceEngine.state = 'idle';
     onDeviceEngine.progress = 0;
+    onDeviceEngine.errorMessage = '';
   },
 
   async init(onProgress?: (state: EngineState, progress: number) => void): Promise<void> {
@@ -61,6 +64,24 @@ export const onDeviceEngine: OnDeviceEngine = {
         onDeviceEngine.state = 'downloading';
         onDeviceEngine.progress = 0;
         onProgress?.('downloading', 0);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const gpu = (navigator as any).gpu;
+        if (!gpu) {
+          throw new Error('WebGPU is not supported in this browser.');
+        }
+
+        // Request high-performance adapter to prefer Vulkan over OpenGLES/Compatibility Mode on Android.
+        // q4f16_1 models require shader-f16, which is absent on the Compatibility Mode adapter.
+        const adapter = await gpu.requestAdapter({ powerPreference: 'high-performance' });
+        if (!adapter) {
+          throw new Error('No WebGPU adapter found. Your GPU may not be supported.');
+        }
+        if (!adapter.features.has('shader-f16')) {
+          throw new Error(
+            'GPU lacks shader-f16 support. On Android, enable "WebGPU Developer Features" in chrome://flags and restart Chrome.'
+          );
+        }
 
         engine = await CreateMLCEngine(modelId, {
           appConfig: prebuiltAppConfig,
@@ -79,6 +100,7 @@ export const onDeviceEngine: OnDeviceEngine = {
       } catch (err) {
         console.error('WebLLM init error:', err);
         onDeviceEngine.state = 'error';
+        onDeviceEngine.errorMessage = err instanceof Error ? err.message : String(err);
         initPromise = null;
         throw err;
       }
