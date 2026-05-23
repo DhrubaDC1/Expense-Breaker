@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Sparkles, Brain, Bell, Mic, Camera, Globe, Lock, ShieldCheck, LogOut, Fingerprint, Check, X } from 'lucide-react';
+import { Sparkles, Brain, Bell, Mic, Camera, Globe, Lock, ShieldCheck, LogOut, Fingerprint, Check, X, Layers, Users } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { useToast } from '../ToastContext';
 import { GlassCard } from './ui';
@@ -80,6 +80,30 @@ export default function Settings({ contentPad = '0 32px' }: { contentPad?: strin
   const { user, currency, setCurrency, signOut } = useApp();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  const [noTransparency, setNoTransparency] = useState(() => localStorage.getItem('no-transparency') === '1');
+  const [hideSpaces, setHideSpaces] = useState(() => localStorage.getItem('hide-spaces') === '1');
+
+  const handleHideSpaces = (v: boolean) => {
+    setHideSpaces(v);
+    if (v) {
+      localStorage.setItem('hide-spaces', '1');
+    } else {
+      localStorage.removeItem('hide-spaces');
+    }
+    window.dispatchEvent(new CustomEvent('hide-spaces-change', { detail: v }));
+  };
+
+  const handleNoTransparency = (v: boolean) => {
+    setNoTransparency(v);
+    if (v) {
+      localStorage.setItem('no-transparency', '1');
+      document.documentElement.classList.add('no-transparency');
+    } else {
+      localStorage.removeItem('no-transparency');
+      document.documentElement.classList.remove('no-transparency');
+    }
+  };
 
   const [aiAuto, setAiAuto] = useState(true);
   const [aiCoach, setAiCoach] = useState(true);
@@ -195,6 +219,12 @@ export default function Settings({ contentPad = '0 32px' }: { contentPad?: strin
           </select>
         </Row>
         <Row Icon={Sparkles} title="Appearance" value="Glass Dark ›" onClick={() => setActiveModal('appearance')} />
+        <Row Icon={Layers} title="Disable Transparency">
+          <Toggle on={noTransparency} onChange={handleNoTransparency} />
+        </Row>
+        <Row Icon={Users} title="Disable Spaces">
+          <Toggle on={hideSpaces} onChange={handleHideSpaces} />
+        </Row>
         <Row Icon={Bell} title="Notifications">
           <Toggle on={notif} onChange={setNotif} />
         </Row>
