@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, X, Mic, Send } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { chatWithCoach } from '../services/aiService';
+import { onDeviceEngine, EngineState } from '../services/onDeviceEngine';
 import { useIsMobile } from '../lib/useIsMobile';
 
 const SUGGESTIONS = [
@@ -105,7 +106,21 @@ export default function Coach({ open, onClose }: { open: boolean; onClose: () =>
   ]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [engineState, setEngineState] = useState<EngineState>(onDeviceEngine.state);
+  const [engineProgress, setEngineProgress] = useState(onDeviceEngine.progress);
   const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (onDeviceEngine.state === 'ready') return;
+    const id = setInterval(() => {
+      setEngineState(onDeviceEngine.state);
+      setEngineProgress(onDeviceEngine.progress);
+      if (onDeviceEngine.state === 'ready' || onDeviceEngine.state === 'error') {
+        clearInterval(id);
+      }
+    }, 500);
+    return () => clearInterval(id);
+  }, []);
 
   // Refresh greeting with live balance whenever the panel opens (or user changes)
   useEffect(() => {
@@ -185,7 +200,15 @@ export default function Coach({ open, onClose }: { open: boolean; onClose: () =>
                 <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--mint)', boxShadow: '0 0 6px var(--mint)' }} />
               </div>
               <div style={{ fontSize: 10, color: 'var(--ink-faint)' }} className="mono">
-                ONLINE · GROQ AI · FINANCE-GROUNDED
+                {engineState === 'downloading'
+                  ? `DOWNLOADING MODEL · ${engineProgress}%`
+                  : engineState === 'loading'
+                  ? 'LOADING ON-DEVICE AI…'
+                  : engineState === 'ready'
+                  ? 'ON-DEVICE · PRIVATE · FINANCE-GROUNDED'
+                  : engineState === 'error'
+                  ? 'ENGINE ERROR · CHECK CONSOLE'
+                  : 'INITIALIZING…'}
               </div>
             </div>
             <button onClick={onClose} className="glass-spec" style={{
