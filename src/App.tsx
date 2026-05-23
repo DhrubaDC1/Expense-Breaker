@@ -147,12 +147,13 @@ function TopBar({ onCoach, onSignOut }: { onCoach: () => void; onSignOut: () => 
   );
 }
 
-function Dock({ tab, setTab, onAdd, onCoach }: {
+function Dock({ tab, setTab, onAdd, onCoach, tabs }: {
   tab: Tab; setTab: (t: Tab) => void; onAdd: () => void; onCoach: () => void;
+  tabs: typeof DOCK_TABS;
 }) {
   const { trigger } = useWebHaptics();
   const isMobile = useIsMobile();
-  const idx = DOCK_TABS.findIndex(t => t.id === tab);
+  const idx = tabs.findIndex(t => t.id === tab);
 
   if (isMobile) {
     // Full-width bottom bar on mobile
@@ -167,7 +168,7 @@ function Dock({ tab, setTab, onAdd, onCoach }: {
         WebkitBackdropFilter: 'blur(28px) saturate(180%)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: 4, padding: '6px 0' }}>
-          {DOCK_TABS.map(({ id, Icon, label }) => (
+          {tabs.map(({ id, Icon, label }) => (
             <button
               key={id}
               onClick={() => { if (id !== tab) trigger('selection'); setTab(id); }}
@@ -206,7 +207,7 @@ function Dock({ tab, setTab, onAdd, onCoach }: {
     <div style={{ position: 'fixed', left: '50%', bottom: 28, transform: 'translateX(-50%)', zIndex: 40 }}>
       <div className="dock">
         <div className="dock-indicator" style={{ left: 8 + idx * 46, width: 42 }} />
-        {DOCK_TABS.map(({ id, Icon, label }) => (
+        {tabs.map(({ id, Icon, label }) => (
           <button
             key={id}
             className={`dock-btn${id === tab ? ' active' : ''}`}
@@ -252,6 +253,7 @@ function AppContent() {
   const [tab, setTab] = useState<Tab>('dashboard');
   const [addOpen, setAddOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
+  const [hideSpaces, setHideSpaces] = useState(() => localStorage.getItem('hide-spaces') === '1');
   const { user, isAuthLoading, signOut } = useApp();
   const isMobile = useIsMobile();
 
@@ -266,6 +268,16 @@ function AppContent() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const hidden = (e as CustomEvent<boolean>).detail;
+      setHideSpaces(hidden);
+      if (hidden && tab === 'spaces') setTab('dashboard');
+    };
+    window.addEventListener('hide-spaces-change', handler);
+    return () => window.removeEventListener('hide-spaces-change', handler);
+  }, [tab]);
 
   if (biometricCredential && !isUnlocked) {
     return <LockScreen credentialId={biometricCredential} onUnlock={() => setIsUnlocked(true)} />;
@@ -284,6 +296,7 @@ function AppContent() {
   const contentPad = isMobile ? '0 12px' : '0 32px';
   /* Extra bottom padding so content clears the dock */
   const bottomPad = isMobile ? 90 : 140;
+  const visibleTabs = hideSpaces ? DOCK_TABS.filter(t => t.id !== 'spaces') : DOCK_TABS;
 
   return (
     <>
@@ -313,7 +326,7 @@ function AppContent() {
                 <Goals contentPad={contentPad} />
               </motion.div>
             )}
-            {tab === 'spaces' && (
+            {tab === 'spaces' && !hideSpaces && (
               <motion.div key="spaces" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
                 <SharedSpaces contentPad={contentPad} />
               </motion.div>
@@ -327,7 +340,7 @@ function AppContent() {
         </main>
 
         {!isMobile && <CoachFAB onClick={() => setCoachOpen(true)} />}
-        <Dock tab={tab} setTab={setTab} onAdd={() => setAddOpen(true)} onCoach={() => setCoachOpen(true)} />
+        <Dock tab={tab} setTab={setTab} onAdd={() => setAddOpen(true)} onCoach={() => setCoachOpen(true)} tabs={visibleTabs} />
         <Coach open={coachOpen} onClose={() => setCoachOpen(false)} />
         <AddTransactionModal isOpen={addOpen} onClose={() => setAddOpen(false)} />
       </div>
