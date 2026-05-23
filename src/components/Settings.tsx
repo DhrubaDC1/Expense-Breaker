@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Sparkles, Brain, Bell, Mic, Camera, Globe, Lock, ShieldCheck, LogOut, Fingerprint, Check, X, Layers, Users } from 'lucide-react';
+import { Sparkles, Brain, Bell, Mic, Camera, Globe, Lock, ShieldCheck, LogOut, Fingerprint, Check, X, Layers, Users, Cpu } from 'lucide-react';
 import { useApp } from '../AppContext';
+import { MODELS, ModelId, getSelectedModel, setSelectedModel, onDeviceEngine } from '../services/onDeviceEngine';
 import { useToast } from '../ToastContext';
 import { GlassCard } from './ui';
 import { EXCHANGE_RATES } from '../constants';
@@ -80,6 +81,15 @@ export default function Settings({ contentPad = '0 32px' }: { contentPad?: strin
   const { user, currency, setCurrency, signOut } = useApp();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  const [aiModel, setAiModel] = useState<ModelId>(() => getSelectedModel());
+
+  const handleModelChange = (id: ModelId) => {
+    setAiModel(id);
+    setSelectedModel(id);
+    onDeviceEngine.reset();
+    toast(`AI model switched to ${MODELS[id].label} — will load on next use`, 'success');
+  };
 
   const [noTransparency, setNoTransparency] = useState(() => localStorage.getItem('no-transparency') === '1');
   const [hideSpaces, setHideSpaces] = useState(() => localStorage.getItem('hide-spaces') === '1');
@@ -198,6 +208,23 @@ export default function Settings({ contentPad = '0 32px' }: { contentPad?: strin
         </Row>
         <Row Icon={Camera} accent="#7BD9E0" title="Receipt OCR — auto-import">
           <Toggle on={true} onChange={() => {}} />
+        </Row>
+        <Row Icon={Cpu} accent="var(--violet)" title="On-device AI model">
+          <select
+            value={aiModel}
+            onChange={e => handleModelChange(e.target.value as ModelId)}
+            style={{
+              background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-edge-soft)',
+              borderRadius: 8, padding: '4px 8px', color: 'var(--ink)', fontSize: 12, outline: 0,
+              maxWidth: 200,
+            }}
+          >
+            {(Object.entries(MODELS) as [ModelId, typeof MODELS[ModelId]][]).map(([id, m]) => (
+              <option key={id} value={id} style={{ background: '#0a0f0c' }}>
+                {m.label} — {m.description}
+              </option>
+            ))}
+          </select>
         </Row>
       </GlassCard>
 
