@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../AppContext';
 import { CATEGORIES } from '../constants';
 import { GlassCard, AnimatedNumber, Donut } from './ui';
@@ -83,24 +83,40 @@ function KpiLiquidity({ currency, isMobile }: { currency: string; isMobile: bool
 
 function KpiAllocation() {
   const { transactions } = useApp();
+
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  // Refresh current month at midnight
+  useEffect(() => {
+    const id = setInterval(() => {
+      const now = new Date();
+      setCurrentMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const segs = useMemo(() => {
     const totals: Record<string, number> = {};
-    transactions.filter(t => t.type === 'expense').forEach(t => {
-      totals[t.category] = (totals[t.category] || 0) + t.amount;
-    });
+    transactions
+      .filter(t => t.type === 'expense' && t.date.startsWith(currentMonth))
+      .forEach(t => { totals[t.category] = (totals[t.category] || 0) + t.amount; });
     return CATEGORIES
       .filter(c => totals[c.name] && c.type === 'expense')
       .map(c => ({ label: c.name, value: totals[c.name], color: c.color }))
       .sort((a, b) => b.value - a.value);
-  }, [transactions]);
+  }, [transactions, currentMonth]);
 
+  const monthLabel = new Date(currentMonth + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   const total = segs.reduce((s, x) => s + x.value, 0) || 1;
 
   return (
     <GlassCard className="view-enter" style={{ padding: 24, minHeight: 220, animationDelay: '60ms' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <div className="label-text">Allocation</div>
-        <div className="chip chip-violet">Auto-tagged</div>
+        <div className="chip chip-violet">{monthLabel}</div>
       </div>
       <div style={{ display: 'flex', gap: 18, alignItems: 'center', marginTop: 14 }}>
         <div style={{ position: 'relative', flexShrink: 0 }}>

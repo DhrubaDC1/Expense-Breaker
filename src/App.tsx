@@ -3,12 +3,13 @@ import { AppProvider, useApp } from './AppContext';
 import { ToastProvider } from './ToastContext';
 import {
   LayoutDashboard, Clock, Target, Users, Settings as SettingsIcon,
-  Plus, Search, Bell, Sparkles, LogOut,
+  Plus, Search, Bell, Sparkles, LogOut, Wallet,
 } from 'lucide-react';
 
 import Dashboard from './components/Dashboard';
 import Transactions from './components/Transactions';
 import Goals from './components/Goals';
+import Budgets from './components/Budgets';
 import SettingsPage from './components/Settings';
 import AddTransactionModal from './components/AddTransactionModal';
 import Login from './components/Login';
@@ -21,12 +22,13 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useWebHaptics } from 'web-haptics/react';
 import { useIsMobile } from './lib/useIsMobile';
 
-type Tab = 'dashboard' | 'activity' | 'goals' | 'spaces' | 'settings';
+type Tab = 'dashboard' | 'activity' | 'goals' | 'budgets' | 'spaces' | 'settings';
 
 const DOCK_TABS: Array<{ id: Tab; Icon: typeof LayoutDashboard; label: string }> = [
   { id: 'dashboard', Icon: LayoutDashboard, label: 'Dashboard' },
   { id: 'activity',  Icon: Clock,           label: 'Activity'  },
   { id: 'goals',     Icon: Target,          label: 'Goals'     },
+  { id: 'budgets',   Icon: Wallet,          label: 'Budgets'   },
   { id: 'spaces',    Icon: Users,           label: 'Spaces'    },
   { id: 'settings',  Icon: SettingsIcon,    label: 'Settings'  },
 ];
@@ -324,6 +326,11 @@ function AppContent() {
             {tab === 'goals' && (
               <motion.div key="goals" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
                 <Goals contentPad={contentPad} />
+              </motion.div>
+            )}
+            {tab === 'budgets' && (
+              <motion.div key="budgets" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
+                <Budgets contentPad={contentPad} />
               </motion.div>
             )}
             {tab === 'spaces' && !hideSpaces && (

@@ -139,7 +139,7 @@ export function Donut({
       {segments.map((s, i) => {
         const frac = s.value / total;
         const dash = frac * c;
-        const offset = -(acc * 1);
+        const offset = -acc;
         acc += dash;
         return (
           <circle
@@ -152,7 +152,7 @@ export function Donut({
             strokeDashoffset={offset}
             transform={`rotate(-90 ${size/2} ${size/2})`}
             strokeLinecap="butt"
-            style={{ transition: 'stroke-dasharray 1s var(--ease-spring)' }}
+            style={{ transition: 'stroke-dasharray 0.9s var(--ease-spring), stroke-dashoffset 0.9s var(--ease-spring)' }}
           />
         );
       })}

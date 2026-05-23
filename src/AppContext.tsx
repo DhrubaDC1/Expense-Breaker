@@ -38,6 +38,9 @@ interface AppContextType {
   updateTransaction: (id: string, data: Partial<Omit<Transaction, 'id'>>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   budgets: Budget[];
+  addBudget: (b: Omit<Budget, 'id'>) => Promise<void>;
+  updateBudget: (id: string, data: Partial<Omit<Budget, 'id'>>) => Promise<void>;
+  deleteBudget: (id: string) => Promise<void>;
   goals: Goal[];
   addGoal: (g: Omit<Goal, 'id'>) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
@@ -145,6 +148,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return unsub;
   }, [user]);
 
+  // Sync Budgets
+  useEffect(() => {
+    if (!user) return;
+    const path = `users/${user.uid}/budgets`;
+    const unsub = onSnapshot(collection(db, path), (snapshot) => {
+      setBudgets(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Budget)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
+    return unsub;
+  }, [user]);
+
   // Sync Spaces
   useEffect(() => {
     if (!user) return;
@@ -203,6 +218,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteTransaction = useCallback(async (id: string) => {
     if (!user) return;
     const path = `users/${user.uid}/transactions/${id}`;
+    try {
+      await deleteDoc(doc(db, path));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  }, [user]);
+
+  const addBudget = useCallback(async (b: Omit<Budget, 'id'>) => {
+    if (!user) return;
+    // Upsert: if a budget already exists for this category+month, update it
+    const existing = budgets.find(x => x.categoryId === b.categoryId && x.month === b.month);
+    if (existing) {
+      const path = `users/${user.uid}/budgets/${existing.id}`;
+      try {
+        await setDoc(doc(db, path), { amount: b.amount }, { merge: true });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.WRITE, path);
+      }
+      return;
+    }
+    const id = crypto.randomUUID();
+    const path = `users/${user.uid}/budgets/${id}`;
+    try {
+      await setDoc(doc(db, path), { ...b, userId: user.uid });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  }, [user, budgets]);
+
+  const updateBudget = useCallback(async (id: string, data: Partial<Omit<Budget, 'id'>>) => {
+    if (!user) return;
+    const path = `users/${user.uid}/budgets/${id}`;
+    try {
+      await setDoc(doc(db, path), data, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  }, [user]);
+
+  const deleteBudget = useCallback(async (id: string) => {
+    if (!user) return;
+    const path = `users/${user.uid}/budgets/${id}`;
     try {
       await deleteDoc(doc(db, path));
     } catch (error) {
@@ -283,6 +340,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateTransaction,
       deleteTransaction,
       budgets,
+      addBudget,
+      updateBudget,
+      deleteBudget,
       goals,
       addGoal,
       deleteGoal,
