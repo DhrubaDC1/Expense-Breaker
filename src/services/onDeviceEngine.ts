@@ -6,12 +6,10 @@ export const MODELS = {
   'Llama-3.2-3B-Instruct-q4f16_1-MLC': {
     label: 'Llama 3.2 3B',
     description: '~1.8 GB · balanced text & chat',
-    vision: false,
   },
-  'dixieclick/Qwen3.5-0.8B-VL-q4f16_1-MLC': {
-    label: 'Qwen 3.5 0.8B VL',
-    description: '~0.5 GB · compact, vision-capable',
-    vision: true,
+  'Qwen3-0.6B-q4f16_1-MLC': {
+    label: 'Qwen3 0.6B',
+    description: '~0.4 GB · compact & fast',
   },
 } as const;
 
@@ -29,26 +27,6 @@ export function setSelectedModel(id: ModelId): void {
   localStorage.setItem(STORAGE_KEY, id);
 }
 
-function buildAppConfig(modelId: ModelId) {
-  if (prebuiltAppConfig.model_list.some(m => m.model_id === modelId)) {
-    return prebuiltAppConfig;
-  }
-  // Custom HuggingFace model — reuse the Qwen2-VL model_lib if available
-  const qwenVLLib = prebuiltAppConfig.model_list.find(
-    m => /Qwen.*VL/i.test(m.model_id)
-  )?.model_lib ?? '';
-  return {
-    ...prebuiltAppConfig,
-    model_list: [
-      ...prebuiltAppConfig.model_list,
-      {
-        model: `https://huggingface.co/${modelId}`,
-        model_id: modelId,
-        model_lib: qwenVLLib,
-      },
-    ],
-  };
-}
 
 interface OnDeviceEngine {
   state: EngineState;
@@ -85,7 +63,7 @@ export const onDeviceEngine: OnDeviceEngine = {
         onProgress?.('downloading', 0);
 
         engine = await CreateMLCEngine(modelId, {
-          appConfig: buildAppConfig(modelId),
+          appConfig: prebuiltAppConfig,
           initProgressCallback: (report: InitProgressReport) => {
             const pct = Math.round(report.progress * 100);
             const nextState: EngineState = report.progress < 1 ? 'downloading' : 'loading';
