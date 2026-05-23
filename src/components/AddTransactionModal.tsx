@@ -268,6 +268,11 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
                     <div style={{ fontSize: 11, color: 'var(--mint)', marginBottom: 8 }}>
                       <Sparkles size={11} style={{ display: 'inline', verticalAlign: -1 }} /> OCR complete — {Math.round((scanResult.confidence || 0.9) * 100)}% confidence
                     </div>
+                    {(scanResult.confidence || 0.9) < 0.7 && (
+                      <div className="label-text" style={{ color: 'var(--amber, #f59e0b)', marginBottom: 8 }}>
+                        Low confidence — please verify
+                      </div>
+                    )}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12 }}>
                       <Field label="Merchant" value={scanResult.merchant || '—'} />
                       <Field label="Amount" value={`${scanResult.currency || currency} ${scanResult.amount}`} />

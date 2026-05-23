@@ -160,6 +160,9 @@ export default function BatchImportModal({ isOpen, onClose }: Props) {
                        <div>
                          <p className="text-xs font-bold text-white">{item.merchant || item.note || 'Process Entry'}</p>
                          <p className="text-[9px] text-gray-600 uppercase font-bold tracking-wider">{item.category} <span className="opacity-30 mx-1">/</span> {item.date}</p>
+                         {(item.confidence || 0.9) < 0.7 && (
+                           <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: '#f59e0b' }}>Low confidence — please verify</p>
+                         )}
                        </div>
                     </div>
                     <div className="flex items-center gap-4">

@@ -35,6 +35,7 @@ interface AppContextType {
   user: User | null;
   transactions: Transaction[];
   addTransaction: (t: Omit<Transaction, 'id'>) => Promise<void>;
+  updateTransaction: (id: string, data: Partial<Omit<Transaction, 'id'>>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   budgets: Budget[];
   goals: Goal[];
@@ -184,6 +185,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [user]);
 
+  const updateTransaction = useCallback(async (id: string, data: Partial<Omit<Transaction, 'id'>>) => {
+    if (!user) return;
+    const path = `users/${user.uid}/transactions/${id}`;
+    try {
+      const update: Record<string, unknown> = { ...data, updatedAt: new Date().toISOString() };
+      if (data.note !== undefined && user.uid) {
+        update.note = await encryptData(data.note, user.uid);
+        update.isEncrypted = true;
+      }
+      await setDoc(doc(db, path), update, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  }, [user]);
+
   const deleteTransaction = useCallback(async (id: string) => {
     if (!user) return;
     const path = `users/${user.uid}/transactions/${id}`;
@@ -264,6 +280,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       user,
       transactions,
       addTransaction,
+      updateTransaction,
       deleteTransaction,
       budgets,
       goals,
