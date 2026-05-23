@@ -13,6 +13,11 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.png', 'apple-touch-icon.png'],
+        workbox: {
+          // web-llm and tesseract manage their own caching; exclude them from SW precache
+          globIgnores: ['**/vendor-webllm*', '**/vendor-tesseract*'],
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        },
         manifest: {
           name: 'ClearLedger',
           short_name: 'ClearLedger',
@@ -45,6 +50,18 @@ export default defineConfig(({mode}) => {
     },
     optimizeDeps: {
       exclude: ['@mlc-ai/web-llm'],
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+            'vendor-webllm': ['@mlc-ai/web-llm'],
+            'vendor-tesseract': ['tesseract.js'],
+          },
+        },
+      },
     },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
