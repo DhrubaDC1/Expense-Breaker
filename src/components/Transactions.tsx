@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Sparkles, Trash2, Pencil, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, Trash2, Pencil, ChevronUp, ChevronDown } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { CATEGORIES } from '../constants';
 import { Transaction } from '../types';
@@ -136,9 +136,6 @@ export default function Transactions({ contentPad = '0 32px' }: { contentPad?: s
               placeholder='Search transactions — note, category…'
               style={{ background: 'transparent', border: 0, outline: 0, flex: 1, fontSize: 12, color: 'var(--ink)' }}
             />
-            <span className="chip chip-violet" style={{ fontSize: 9 }}>
-              <Sparkles size={9} style={{ display: 'inline' }} />&nbsp;AI
-            </span>
           </div>
         </div>
 
