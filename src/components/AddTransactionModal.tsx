@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { X, Mic, Sparkles, Camera, Plus } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { CATEGORIES, DEFAULT_CURRENCY } from '../constants';
@@ -39,11 +39,11 @@ function Input({ label, placeholder, mono, type = 'text', value, onChange }: {
 }
 
 export default function AddTransactionModal({ isOpen, onClose }: Props) {
-  const { addTransaction, currency } = useApp();
+  const { addTransaction, currency, transactions } = useApp();
   const { trigger } = useWebHaptics();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [tab, setTab] = useState<Tab>('ai');
+  const [tab, setTab] = useState<Tab>('manual');
 
   // AI parse state
   const [aiText, setAiText] = useState('');
@@ -56,6 +56,26 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [type, setType] = useState<'expense' | 'income'>('expense');
+
+  // Note autocomplete
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const noteInputRef = useRef<HTMLInputElement>(null);
+
+  const noteSuggestions = useMemo(() => {
+    if (!note.trim()) return [];
+    const lower = note.toLowerCase();
+    const seen = new Set<string>();
+    return transactions
+      .filter(t => t.note && t.note.toLowerCase().includes(lower))
+      .filter(t => { if (seen.has(t.note!)) return false; seen.add(t.note!); return true; })
+      .slice(0, 6);
+  }, [note, transactions]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setDate(new Date().toISOString().split('T')[0]);
+    }
+  }, [isOpen]);
 
   // Receipt scan state
   const [scanning, setScanning] = useState(false);
@@ -133,16 +153,16 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
       category, date, note, type,
     });
     trigger('success');
-    setAmount(''); setNote('');
+    setAmount(''); setNote(''); setShowSuggestions(false);
     onClose();
   };
 
   if (!isOpen) return null;
 
   const TABS: Array<{ id: Tab; label: string; Icon: typeof Sparkles }> = [
+    { id: 'manual', label: 'Manual',       Icon: Plus     },
     { id: 'ai',     label: 'AI Parse',     Icon: Sparkles },
     { id: 'scan',   label: 'Receipt Scan', Icon: Camera   },
-    { id: 'manual', label: 'Manual',       Icon: Plus     },
   ];
   const tabIdx = TABS.findIndex(t => t.id === tab);
 
@@ -311,7 +331,57 @@ export default function AddTransactionModal({ isOpen, onClose }: Props) {
                     </button>
                   ))}
                 </div>
-                <Input label="Note / Merchant" placeholder="e.g. Coffee shop" value={note} onChange={setNote} />
+                <div style={{ position: 'relative' }}>
+                  <div className="label-text" style={{ marginBottom: 6 }}>Note / Merchant</div>
+                  <input
+                    ref={noteInputRef}
+                    type="text"
+                    value={note}
+                    onChange={e => { setNote(e.target.value); setShowSuggestions(true); }}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                    placeholder="e.g. Coffee shop"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-edge-soft)', outline: 0, fontSize: 13, color: 'var(--ink)' }}
+                  />
+                  {showSuggestions && noteSuggestions.length > 0 && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                      marginTop: 4, borderRadius: 10,
+                      background: 'color-mix(in oklab, #050505 80%, transparent)',
+                      border: '1px solid var(--glass-edge-soft)',
+                      backdropFilter: 'blur(24px)',
+                      overflow: 'hidden',
+                    }}>
+                      {noteSuggestions.map((t, i) => {
+                        const catInfo = CATEGORIES.find(c => c.name === t.category);
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onMouseDown={() => {
+                              setNote(t.note!);
+                              setCategory(t.category);
+                              setShowSuggestions(false);
+                            }}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 8,
+                              width: '100%', padding: '9px 12px', textAlign: 'left',
+                              fontSize: 12, color: 'var(--ink)',
+                              borderBottom: i < noteSuggestions.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                              transition: 'background 0.15s',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                          >
+                            <span style={{ width: 6, height: 6, borderRadius: 2, background: catInfo?.color || '#8a9892', flexShrink: 0 }} />
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.note}</span>
+                            <span style={{ fontSize: 10, color: 'var(--ink-mute)', flexShrink: 0 }}>{t.category}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <Input label="Amount" placeholder="0.00" mono type="number" value={amount} onChange={setAmount} />
                   <Input label="Date" type="date" value={date} onChange={setDate} />
