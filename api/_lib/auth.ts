@@ -21,11 +21,15 @@ export async function requireToken(
 
   let uid: string;
   try {
-    const snap = await adminDb().doc(`apiTokens/${tokenHash}`).get();
+    const db = await adminDb();
+    const snap = await db.doc(`apiTokens/${tokenHash}`).get();
     if (!snap.exists) { res.status(401).json({ error: 'invalid_token' }); return; }
     uid = snap.data()!.uid;
-  } catch {
-    res.status(401).json({ error: 'invalid_token' }); return;
+  } catch (e: any) {
+    // Surface Firebase init errors as 503 (misconfigured server) not 401
+    const msg = e?.message ?? String(e);
+    res.status(503).json({ error: 'service_unavailable', detail: msg });
+    return;
   }
 
   const rl = checkRateLimit(tokenHash);

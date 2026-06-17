@@ -73,7 +73,7 @@ function dateStr(iso: string) {
 async function getCategoryById(uid: string, id: string) {
   const builtin = CATEGORIES.find(c => c.id === id);
   if (builtin) return builtin;
-  const snap = await adminDb().doc(`users/${uid}/categories/${id}`).get();
+  const snap = await (await adminDb()).doc(`users/${uid}/categories/${id}`).get();
   if (snap.exists) return { id, is_default: false, ...snap.data() } as typeof CATEGORIES[0];
   return null;
 }
@@ -101,9 +101,10 @@ async function shapeTransaction(doc: FirebaseFirestore.DocumentSnapshot, uid: st
 // ─── GET /api/v1/me ────────────────────────────────────────────────────────
 app.get('/api/v1/me', requireToken, async (req: Request, res: Response) => {
   const { uid } = req as AuthedRequest;
+  const [db, auth] = await Promise.all([adminDb(), adminAuth()]);
   const [user, userDoc] = await Promise.all([
-    adminAuth().getUser(uid),
-    adminDb().doc(`users/${uid}`).get(),
+    auth.getUser(uid),
+    db.doc(`users/${uid}`).get(),
   ]);
   res.json({
     id:                user.uid,
@@ -119,8 +120,9 @@ app.get('/api/v1/expenses', requireToken, async (req: Request, res: Response) =>
   const { uid } = req as AuthedRequest;
   const { from, to, category_id } = req.query as Record<string, string>;
   const { limit, offset } = parsePagination(req.query);
+  const db = await adminDb();
 
-  let q: FirebaseFirestore.Query = adminDb()
+  let q: FirebaseFirestore.Query = db
     .collection(`users/${uid}/transactions`)
     .orderBy('date', 'desc');
 
@@ -130,14 +132,9 @@ app.get('/api/v1/expenses', requireToken, async (req: Request, res: Response) =>
   const snap = await q.get();
   let docs = snap.docs;
 
-  // Filter by category id (resolved to name)
   if (category_id) {
     const cat = await getCategoryById(uid, category_id);
-    if (cat) {
-      docs = docs.filter(d => d.data().category === cat.name);
-    } else {
-      docs = [];
-    }
+    docs = cat ? docs.filter(d => d.data().category === cat.name) : [];
   }
 
   const total = docs.length;
@@ -173,41 +170,36 @@ app.post('/api/v1/expenses', requireToken, async (req: Request, res: Response) =
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const dateOnly = dateStr(occurred_at);
+  const db = await adminDb();
 
   let note = description ?? '';
   let isEncrypted = false;
-  if (note) {
-    note = await encryptNote(note, uid);
-    isEncrypted = true;
-  }
+  if (note) { note = await encryptNote(note, uid); isEncrypted = true; }
 
   const data = {
-    amount,
-    currency,
+    amount, currency,
     category:    cat?.name ?? 'Other',
     date:        dateOnly,
-    note,
-    isEncrypted,
+    note, isEncrypted,
     type:        'expense' as const,
     userId:      uid,
-    createdAt:   now,
-    updatedAt:   now,
+    createdAt:   now, updatedAt: now,
     exchangeRateAtEntry: 1,
   };
 
-  await adminDb().doc(`users/${uid}/transactions/${id}`).set(data);
-
-  const snap = await adminDb().doc(`users/${uid}/transactions/${id}`).get();
-  const shaped = await shapeTransaction(snap, uid);
-  res.status(201).json(shaped);
+  const docRef = db.doc(`users/${uid}/transactions/${id}`);
+  await docRef.set(data);
+  const snap = await docRef.get();
+  res.status(201).json(await shapeTransaction(snap, uid));
 });
 
 // ─── GET /api/v1/expenses/summary ─────────────────────────────────────────
 app.get('/api/v1/expenses/summary', requireToken, async (req: Request, res: Response) => {
   const { uid } = req as AuthedRequest;
   const { from, to, group_by = 'category' } = req.query as Record<string, string>;
+  const db = await adminDb();
 
-  let q: FirebaseFirestore.Query = adminDb()
+  let q: FirebaseFirestore.Query = db
     .collection(`users/${uid}/transactions`)
     .where('type', '==', 'expense')
     .orderBy('date', 'asc');
@@ -217,45 +209,36 @@ app.get('/api/v1/expenses/summary', requireToken, async (req: Request, res: Resp
 
   const snap = await q.get();
   const docs  = snap.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, unknown>));
-
   let total = 0;
   const groups = new Map<string, { label: string; total: number; count: number }>();
 
   for (const d of docs) {
     const amt = Number(d.amount) || 0;
     total += amt;
-
-    let key: string;
-    let label: string;
+    let key: string, label: string;
 
     if (group_by === 'category') {
       const catName = String(d.category ?? 'Other');
       const cat = CATEGORIES.find(c => c.name === catName);
-      key = cat?.id ?? 'other';
-      label = catName;
+      key = cat?.id ?? 'other'; label = catName;
     } else if (group_by === 'day') {
       key = label = String(d.date ?? '').slice(0, 10);
     } else if (group_by === 'week') {
       const date = new Date(String(d.date) + 'T00:00:00Z');
-      const day = date.getUTCDay();
       const monday = new Date(date);
-      monday.setUTCDate(date.getUTCDate() - ((day + 6) % 7));
+      monday.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
       key = label = monday.toISOString().slice(0, 10);
     } else {
-      // month
       key = label = String(d.date ?? '').slice(0, 7);
     }
 
     const g = groups.get(key) ?? { label, total: 0, count: 0 };
-    g.total += amt;
-    g.count += 1;
+    g.total += amt; g.count += 1;
     groups.set(key, g);
   }
 
   res.json({
-    from:   from ?? null,
-    to:     to   ?? null,
-    total,
+    from: from ?? null, to: to ?? null, total,
     groups: [...groups.entries()].map(([k, v]) => ({ key: k, ...v })),
   });
 });
@@ -263,23 +246,19 @@ app.get('/api/v1/expenses/summary', requireToken, async (req: Request, res: Resp
 // ─── PATCH /api/v1/expenses/:id ───────────────────────────────────────────
 app.patch('/api/v1/expenses/:id', requireToken, async (req: Request, res: Response) => {
   const { uid } = req as AuthedRequest;
-  const { id } = req.params;
-  const ref = adminDb().doc(`users/${uid}/transactions/${id}`);
+  const db = await adminDb();
+  const ref = db.doc(`users/${uid}/transactions/${req.params.id}`);
   const snap = await ref.get();
-  if (!snap.exists || snap.data()?.userId !== uid) {
-    res.status(404).json({ error: 'not_found' }); return;
-  }
+  if (!snap.exists || snap.data()?.userId !== uid) { res.status(404).json({ error: 'not_found' }); return; }
 
   const { amount, currency, category_id, description, occurred_at } = req.body ?? {};
   const update: Record<string, unknown> = { updatedAt: new Date().toISOString() };
 
   if (amount !== undefined) {
-    if (typeof amount !== 'number' || amount <= 0) {
-      res.status(400).json({ error: 'invalid_value', field: 'amount' }); return;
-    }
+    if (typeof amount !== 'number' || amount <= 0) { res.status(400).json({ error: 'invalid_value', field: 'amount' }); return; }
     update.amount = amount;
   }
-  if (currency !== undefined) update.currency = currency;
+  if (currency  !== undefined) update.currency = currency;
   if (occurred_at !== undefined) update.date = dateStr(occurred_at);
   if (category_id !== undefined) {
     const cat = await getCategoryById(uid, String(category_id));
@@ -292,19 +271,16 @@ app.patch('/api/v1/expenses/:id', requireToken, async (req: Request, res: Respon
   }
 
   await ref.set(update, { merge: true });
-  const updated = await ref.get();
-  res.json(await shapeTransaction(updated, uid));
+  res.json(await shapeTransaction(await ref.get(), uid));
 });
 
 // ─── DELETE /api/v1/expenses/:id ──────────────────────────────────────────
 app.delete('/api/v1/expenses/:id', requireToken, async (req: Request, res: Response) => {
   const { uid } = req as AuthedRequest;
-  const { id } = req.params;
-  const ref = adminDb().doc(`users/${uid}/transactions/${id}`);
+  const db = await adminDb();
+  const ref = db.doc(`users/${uid}/transactions/${req.params.id}`);
   const snap = await ref.get();
-  if (!snap.exists || snap.data()?.userId !== uid) {
-    res.status(404).json({ error: 'not_found' }); return;
-  }
+  if (!snap.exists || snap.data()?.userId !== uid) { res.status(404).json({ error: 'not_found' }); return; }
   await ref.delete();
   res.status(204).end();
 });
@@ -312,12 +288,11 @@ app.delete('/api/v1/expenses/:id', requireToken, async (req: Request, res: Respo
 // ─── GET /api/v1/categories ───────────────────────────────────────────────
 app.get('/api/v1/categories', requireToken, async (req: Request, res: Response) => {
   const { uid } = req as AuthedRequest;
-  const snap = await adminDb().collection(`users/${uid}/categories`).get();
+  const db = await adminDb();
+  const snap = await db.collection(`users/${uid}/categories`).get();
   const custom = snap.docs.map(d => ({
-    id:         d.id,
-    name:       d.data().name,
-    color:      d.data().color ?? '#94a3b8',
-    icon:       d.data().icon  ?? 'MoreHorizontal',
+    id: d.id, name: d.data().name,
+    color: d.data().color ?? '#94a3b8', icon: d.data().icon ?? 'MoreHorizontal',
     is_default: false,
   }));
   res.json([...CATEGORIES, ...custom]);
@@ -328,12 +303,12 @@ app.post('/api/v1/categories', requireToken, async (req: Request, res: Response)
   const { uid } = req as AuthedRequest;
   const { name, color, icon } = req.body ?? {};
   if (!name || typeof name !== 'string') {
-    res.status(400).json({ error: 'invalid_value', field: 'name', message: 'name is required' });
-    return;
+    res.status(400).json({ error: 'invalid_value', field: 'name', message: 'name is required' }); return;
   }
+  const db = await adminDb();
   const id  = crypto.randomUUID();
   const data = { name, color: color ?? '#94a3b8', icon: icon ?? 'MoreHorizontal' };
-  await adminDb().doc(`users/${uid}/categories/${id}`).set(data);
+  await db.doc(`users/${uid}/categories/${id}`).set(data);
   res.status(201).json({ id, is_default: false, ...data });
 });
 
@@ -341,18 +316,10 @@ app.post('/api/v1/categories', requireToken, async (req: Request, res: Response)
 app.get('/api/v1/budgets', requireToken, async (req: Request, res: Response) => {
   const { uid } = req as AuthedRequest;
   const month = String(req.query.month ?? new Date().toISOString().slice(0, 7));
-  const snap  = await adminDb()
-    .collection(`users/${uid}/budgets`)
-    .where('month', '==', month)
-    .get();
-
-  const byCategory = snap.docs.map(d => ({
-    category_id: d.data().categoryId,
-    limit:       d.data().amount,
-  }));
-  const totalBudget = byCategory.reduce((s, b) => s + b.limit, 0);
-
-  res.json({ month, total_budget: totalBudget, by_category: byCategory });
+  const db = await adminDb();
+  const snap = await db.collection(`users/${uid}/budgets`).where('month', '==', month).get();
+  const byCategory = snap.docs.map(d => ({ category_id: d.data().categoryId, limit: d.data().amount }));
+  res.json({ month, total_budget: byCategory.reduce((s, b) => s + b.limit, 0), by_category: byCategory });
 });
 
 // ─── POST /api/v1/budgets ─────────────────────────────────────────────────
@@ -361,11 +328,10 @@ app.post('/api/v1/budgets', requireToken, async (req: Request, res: Response) =>
   const { month, total_budget, by_category } = req.body ?? {};
 
   if (!month || !/^\d{4}-\d{2}$/.test(month)) {
-    res.status(400).json({ error: 'invalid_value', field: 'month', message: 'month must be YYYY-MM' });
-    return;
+    res.status(400).json({ error: 'invalid_value', field: 'month', message: 'month must be YYYY-MM' }); return;
   }
 
-  const db = adminDb();
+  const db = await adminDb();
   const batch = db.batch();
 
   // If by_category provided, write each budget entry
