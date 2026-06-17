@@ -14,6 +14,7 @@ import {
   setDoc,
   deleteDoc,
   doc,
+  getDoc,
   query,
   orderBy,
   where,
@@ -53,6 +54,9 @@ interface AppContextType {
   isAuthLoading: boolean;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
+  apiTokenMeta: { createdAt: string } | null;
+  generateApiToken: () => Promise<string>;
+  revokeApiToken: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -82,6 +86,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [apiTokenMeta, setApiTokenMeta] = useState<{ createdAt: string } | null>(null);
 
   // Auth State — also handles redirect sign-in result (fallback from popup-blocked)
   useEffect(() => {
@@ -168,6 +173,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSpaces(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as SharedSpace)));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'spaces');
+    });
+    return unsub;
+  }, [user]);
+
+  // Sync API token metadata from users/{uid} document
+  useEffect(() => {
+    if (!user) { setApiTokenMeta(null); return; }
+    const unsub = onSnapshot(doc(db, `users/${user.uid}`), (snap) => {
+      const createdAt = snap.data()?.apiTokenCreatedAt;
+      setApiTokenMeta(createdAt ? { createdAt } : null);
     });
     return unsub;
   }, [user]);
@@ -308,6 +323,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [user]);
 
+  const generateApiToken = useCallback(async (): Promise<string> => {
+    if (!user) return '';
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const raw = 'clg_live_' + Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      .map(b => chars[b % 62]).join('');
+    const hashBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+    const hash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const createdAt = new Date().toISOString();
+    // Revoke any existing token first
+    const userSnap = await getDoc(doc(db, `users/${user.uid}`));
+    const oldHash = userSnap.data()?.apiTokenHash;
+    if (oldHash) await deleteDoc(doc(db, `apiTokens/${oldHash}`));
+    // Write new token
+    await setDoc(doc(db, `apiTokens/${hash}`), { uid: user.uid, createdAt });
+    await setDoc(doc(db, `users/${user.uid}`), { apiTokenHash: hash, apiTokenCreatedAt: createdAt }, { merge: true });
+    return raw;
+  }, [user]);
+
+  const revokeApiToken = useCallback(async (): Promise<void> => {
+    if (!user) return;
+    const userSnap = await getDoc(doc(db, `users/${user.uid}`));
+    const hash = userSnap.data()?.apiTokenHash;
+    if (hash) await deleteDoc(doc(db, `apiTokens/${hash}`));
+    await setDoc(doc(db, `users/${user.uid}`), { apiTokenHash: null, apiTokenCreatedAt: null }, { merge: true });
+  }, [user]);
+
   const signIn = async () => {
     if (isSigningIn) return;
     setIsSigningIn(true);
@@ -354,7 +395,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isLoading,
       isAuthLoading: isAuthLoading || isSigningIn,
       signIn,
-      signOut: signOutUser
+      signOut: signOutUser,
+      apiTokenMeta,
+      generateApiToken,
+      revokeApiToken,
     }}>
       {children}
     </AppContext.Provider>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Sparkles, Brain, Bell, Mic, Camera, Globe, Lock, ShieldCheck, LogOut, Fingerprint, Check, X, Layers, Users } from 'lucide-react';
+import { Sparkles, Brain, Bell, Mic, Camera, Globe, Lock, ShieldCheck, LogOut, Fingerprint, Check, X, Layers, Users, Zap, Copy, Trash2 } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { useToast } from '../ToastContext';
 import { GlassCard } from './ui';
@@ -8,7 +8,7 @@ import { EXCHANGE_RATES } from '../constants';
 import { isBiometricAvailable, registerBiometricLock } from '../lib/webauthn';
 import { useIsMobile } from '../lib/useIsMobile';
 
-type Modal = 'biometric' | 'appearance' | null;
+type Modal = 'biometric' | 'appearance' | 'hermes' | null;
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -77,7 +77,7 @@ function Row({
 }
 
 export default function Settings({ contentPad = '0 32px' }: { contentPad?: string }) {
-  const { user, currency, setCurrency, signOut } = useApp();
+  const { user, currency, setCurrency, signOut, apiTokenMeta, generateApiToken, revokeApiToken } = useApp();
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -116,6 +116,10 @@ export default function Settings({ contentPad = '0 32px' }: { contentPad?: strin
     () => localStorage.getItem('biometric_lock_credential')
   );
   const [isBiometricSupported, setIsBiometricSupported] = useState(false);
+
+  const [hermesToken, setHermesToken] = useState<string | null>(null);
+  const [hermesLoading, setHermesLoading] = useState(false);
+  const [hermesConfirm, setHermesConfirm] = useState<'generate' | 'revoke' | null>(null);
 
   useEffect(() => {
     isBiometricAvailable().then(setIsBiometricSupported);
@@ -230,8 +234,20 @@ export default function Settings({ contentPad = '0 32px' }: { contentPad?: strin
         </Row>
       </GlassCard>
 
+      {/* Hermes API */}
+      <GlassCard className="view-enter" style={{ padding: 4, marginBottom: 16, animationDelay: '180ms' }}>
+        <div className="label-text" style={{ padding: '12px 16px 0' }}>Hermes API</div>
+        <Row
+          Icon={Zap}
+          accent="#9A8CFF"
+          title="External API Token"
+          value={apiTokenMeta ? `Active since ${new Date(apiTokenMeta.createdAt).toLocaleDateString()} ›` : 'No active token ›'}
+          onClick={() => setActiveModal('hermes')}
+        />
+      </GlassCard>
+
       {/* Security */}
-      <GlassCard className="view-enter" style={{ padding: 4, animationDelay: '180ms' }}>
+      <GlassCard className="view-enter" style={{ padding: 4, animationDelay: '240ms' }}>
         <div className="label-text" style={{ padding: '12px 16px 0' }}>Security</div>
         <Row
           Icon={Lock}
@@ -243,6 +259,106 @@ export default function Settings({ contentPad = '0 32px' }: { contentPad?: strin
         <Row Icon={ShieldCheck} title="Note Encryption" value="AES-GCM 256 ›" />
         <Row Icon={Globe} title="Cloud Sync" value="Firebase Active ›" />
       </GlassCard>
+
+      {/* Hermes API modal */}
+      {activeModal === 'hermes' && ReactDOM.createPortal(
+        <>
+          <div className="scrim" onClick={() => { setActiveModal(null); setHermesToken(null); setHermesConfirm(null); }} />
+          <div className="log-entry-modal">
+            <GlassCard strong className="log-entry-card">
+              <div className="log-entry-body">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                  <div>
+                    <div className="h-display" style={{ fontSize: 20 }}>Hermes API</div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 4 }}>External agent access</div>
+                  </div>
+                  <button onClick={() => { setActiveModal(null); setHermesToken(null); setHermesConfirm(null); }} style={{ color: 'var(--ink-mute)', padding: 4 }}><X size={16} /></button>
+                </div>
+
+                {/* One-time token display */}
+                {hermesToken && (
+                  <div style={{ marginBottom: 20, padding: 14, borderRadius: 12, background: 'color-mix(in oklab, var(--mint) 6%, transparent)', border: '1px solid color-mix(in oklab, var(--mint) 25%, transparent)' }}>
+                    <div style={{ fontSize: 11, color: 'var(--mint)', marginBottom: 8, fontWeight: 600 }}>Copy this token — it will not be shown again</div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <code style={{ flex: 1, fontSize: 11, wordBreak: 'break-all', color: 'var(--ink)', lineHeight: 1.5 }}>{hermesToken}</code>
+                      <button
+                        className="btn"
+                        style={{ flexShrink: 0 }}
+                        onClick={() => { navigator.clipboard.writeText(hermesToken); toast('Token copied', 'success'); }}
+                      >
+                        <Copy size={13} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ fontSize: 12, color: 'var(--ink-mute)', marginBottom: 20, lineHeight: 1.6 }}>
+                  {apiTokenMeta
+                    ? `Token active since ${new Date(apiTokenMeta.createdAt).toLocaleString()}. Generating a new token will invalidate the current one.`
+                    : 'Generate a token to allow Hermes and other external agents to read and write your expenses via the REST API.'}
+                </div>
+
+                {/* Confirm prompt */}
+                {hermesConfirm && (
+                  <div style={{ marginBottom: 16, padding: 14, borderRadius: 12, background: 'rgba(251,146,60,0.06)', border: '1px solid rgba(251,146,60,0.2)', fontSize: 12, color: '#fdba74', lineHeight: 1.6 }}>
+                    {hermesConfirm === 'generate'
+                      ? 'This will invalidate any existing token. The new token is shown once. Continue?'
+                      : 'This will permanently revoke access for all agents using the current token. Continue?'}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                      <button className="btn btn-primary" style={{ flex: 1 }} disabled={hermesLoading} onClick={async () => {
+                        setHermesLoading(true);
+                        try {
+                          if (hermesConfirm === 'generate') {
+                            const tok = await generateApiToken();
+                            setHermesToken(tok);
+                            toast('API token generated', 'success');
+                          } else {
+                            await revokeApiToken();
+                            setHermesToken(null);
+                            toast('API token revoked', 'success');
+                          }
+                        } catch { toast('Operation failed', 'error'); }
+                        setHermesConfirm(null);
+                        setHermesLoading(false);
+                      }}>
+                        {hermesLoading ? 'Working…' : 'Confirm'}
+                      </button>
+                      <button className="btn" style={{ flex: 1 }} onClick={() => setHermesConfirm(null)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+
+                {!hermesConfirm && (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setHermesConfirm('generate')}>
+                      {apiTokenMeta ? 'Regenerate Token' : 'Generate API Token'}
+                    </button>
+                    {apiTokenMeta && (
+                      <button className="btn" style={{ flexShrink: 0, color: '#f87171' }} onClick={() => setHermesConfirm('revoke')}>
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* curl example */}
+                <div style={{ marginTop: 24 }}>
+                  <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginBottom: 8, fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase' }}>How to use</div>
+                  <pre style={{ fontSize: 11, lineHeight: 1.6, color: '#a7f3d0', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: 12, overflowX: 'auto', whiteSpace: 'pre' }}>{`TOKEN="clg_live_<your-token>"
+BASE="https://expense-breaker.vercel.app"
+
+curl -H "Authorization: Bearer $TOKEN" $BASE/api/v1/me
+curl "$BASE/api/v1/expenses?limit=20" -H "Authorization: Bearer $TOKEN"
+curl -X POST $BASE/api/v1/expenses \\
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \\
+  -d '{"amount":350,"currency":"BDT","category_id":"1","occurred_at":"${new Date().toISOString()}"}'`}</pre>
+                </div>
+              </div>
+            </GlassCard>
+          </div>
+        </>,
+        document.body
+      )}
 
       {/* Biometric modal */}
       {activeModal === 'biometric' && ReactDOM.createPortal(
