@@ -100,7 +100,7 @@ fakeStore[`users/${USER_UID}`]       = { apiTokenHash: GOOD_HASH, apiTokenCreate
 fakeStore[`users/${OTHER_UID}/transactions/${OTHER_EXPENSE.id}`] = OTHER_EXPENSE;
 
 // ─── Import app AFTER mocks ────────────────────────────────────────────────
-const { app } = await import('../api/v1');
+const { app } = await import('../api/_v1');
 
 // ─── Test suites ───────────────────────────────────────────────────────────
 describe('Auth', () => {
