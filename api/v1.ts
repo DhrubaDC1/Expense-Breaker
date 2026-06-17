@@ -400,6 +400,11 @@ app.post('/api/v1/budgets', requireToken, async (req: Request, res: Response) =>
   res.status(201).json({ month, total_budget: total_budget ?? 0, by_category: by_category ?? [] });
 });
 
+// ─── GET /api/v1/health ────────────────────────────────────────────────────
+app.get('/api/v1/health', (_req, res) => {
+  res.json({ ok: true, ts: new Date().toISOString() });
+});
+
 // ─── GET /api/v1/docs ─────────────────────────────────────────────────────
 app.get('/api/v1/docs', (_req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');

@@ -1,6 +1,11 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/v1.ts": {
+      "includeFiles": "node_modules/firebase-admin/**,node_modules/@google-cloud/**,node_modules/google-auth-library/**,node_modules/google-gax/**,node_modules/@grpc/**"
+    }
+  },
   "rewrites": [
     { "source": "/api/v1/(.*)", "destination": "/api/v1" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
