@@ -55,8 +55,19 @@ service cloud.firestore {
 
     // --- Rules ---
 
+    // API token index — users can write/delete their own token entry
+    match /apiTokens/{tokenHash} {
+      allow create: if isSignedIn() && incoming().uid == request.auth.uid
+        && incoming().keys().hasAll(['uid', 'createdAt']);
+      allow delete: if isSignedIn() && existing().uid == request.auth.uid;
+    }
+
     match /users/{userId} {
       allow get: if isOwner(userId);
+      // Allow users to set/clear their own API token metadata
+      allow create, update: if isOwner(userId)
+        && incoming().diff(existing()).affectedKeys()
+             .hasOnly(['apiTokenHash', 'apiTokenCreatedAt']);
       
       match /transactions/{transactionId} {
         allow list: if isOwner(userId);
