@@ -1,5 +1,4 @@
 node_modules/
-api/v1.mjs
 build/
 dist/
 coverage/
