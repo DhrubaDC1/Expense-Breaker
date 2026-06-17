@@ -12,6 +12,7 @@ import {
   collection,
   onSnapshot,
   setDoc,
+  updateDoc,
   deleteDoc,
   doc,
   getDoc,
@@ -337,7 +338,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (oldHash) await deleteDoc(doc(db, `apiTokens/${oldHash}`));
     // Write new token
     await setDoc(doc(db, `apiTokens/${hash}`), { uid: user.uid, createdAt });
-    await setDoc(doc(db, `users/${user.uid}`), { apiTokenHash: hash, apiTokenCreatedAt: createdAt }, { merge: true });
+    // Use setDoc (create) vs updateDoc (update) explicitly so Firestore rules
+    // evaluate the correct operation — setDoc+merge is ambiguous for new docs.
+    if (userSnap.exists()) {
+      await updateDoc(doc(db, `users/${user.uid}`), { apiTokenHash: hash, apiTokenCreatedAt: createdAt });
+    } else {
+      await setDoc(doc(db, `users/${user.uid}`), { apiTokenHash: hash, apiTokenCreatedAt: createdAt });
+    }
     return raw;
   }, [user]);
 
@@ -346,7 +353,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const userSnap = await getDoc(doc(db, `users/${user.uid}`));
     const hash = userSnap.data()?.apiTokenHash;
     if (hash) await deleteDoc(doc(db, `apiTokens/${hash}`));
-    await setDoc(doc(db, `users/${user.uid}`), { apiTokenHash: null, apiTokenCreatedAt: null }, { merge: true });
+    if (userSnap.exists()) {
+      await updateDoc(doc(db, `users/${user.uid}`), { apiTokenHash: null, apiTokenCreatedAt: null });
+    }
   }, [user]);
 
   const signIn = async () => {

@@ -64,8 +64,12 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get: if isOwner(userId);
-      // Allow users to set/clear their own API token metadata
-      allow create, update: if isOwner(userId)
+      // CREATE fires when the users/{uid} doc doesn't yet exist (common —
+      // transaction subcollection writes don't create the parent doc).
+      allow create: if isOwner(userId)
+        && incoming().keys().hasOnly(['apiTokenHash', 'apiTokenCreatedAt']);
+      // UPDATE: only allow changing the two token fields, nothing else.
+      allow update: if isOwner(userId)
         && incoming().diff(existing()).affectedKeys()
              .hasOnly(['apiTokenHash', 'apiTokenCreatedAt']);
       
