@@ -317,7 +317,10 @@ export default function Settings({ contentPad = '0 32px' }: { contentPad?: strin
                             setHermesToken(null);
                             toast('API token revoked', 'success');
                           }
-                        } catch { toast('Operation failed', 'error'); }
+                        } catch (err: any) {
+                          console.error('[Hermes] token op failed:', err?.code, err?.message, err);
+                          toast(`Failed: ${err?.code ?? err?.message ?? 'unknown'}`, 'error');
+                        }
                         setHermesConfirm(null);
                         setHermesLoading(false);
                       }}>
