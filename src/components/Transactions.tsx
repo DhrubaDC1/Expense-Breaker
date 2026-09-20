@@ -64,13 +64,14 @@ export default function Transactions({ contentPad = '0 32px' }: { contentPad?: s
 
   function exportCsv() {
     const csvCell = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-    const header = ['Date', 'Type', 'Category', 'Amount', 'Currency'];
+    const header = ['Date', 'Type', 'Category', 'Amount', 'Currency', 'Note'];
     const rows = filtered.map(t => [
       t.date,
       t.type,
       CATEGORIES.find(c => c.id === t.category)?.name || t.category,
       t.amount,
       t.currency,
+      t.note || '',
     ]);
     const csv = [header, ...rows].map(r => r.map(csvCell).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
