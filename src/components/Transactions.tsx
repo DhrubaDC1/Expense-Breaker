@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Trash2, Pencil, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, Trash2, Pencil, ChevronUp, ChevronDown, Download } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { CATEGORIES } from '../constants';
 import { Transaction } from '../types';
@@ -62,6 +62,26 @@ export default function Transactions({ contentPad = '0 32px' }: { contentPad?: s
     return list;
   }, [transactions, q, cat, sortKey, sortDir, period, dayVal, monthVal, yearVal]);
 
+  function exportCsv() {
+    const csvCell = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+    const header = ['Date', 'Type', 'Category', 'Amount', 'Currency'];
+    const rows = filtered.map(t => [
+      t.date,
+      t.type,
+      CATEGORIES.find(c => c.id === t.category)?.name || t.category,
+      t.amount,
+      t.currency,
+    ]);
+    const csv = [header, ...rows].map(r => r.map(csvCell).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `clearledger-export-${todayStr()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const totalExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const totalIncome = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const net = totalIncome - totalExpense;
@@ -117,6 +137,14 @@ export default function Transactions({ contentPad = '0 32px' }: { contentPad?: s
               {net >= 0 ? '+' : '−'}{currency}&nbsp;{Math.abs(net).toLocaleString()}
             </span>
           </div>
+          <button
+            className="chip"
+            onClick={exportCsv}
+            disabled={filtered.length === 0}
+            style={{ cursor: filtered.length ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 4, opacity: filtered.length ? 1 : 0.4 }}
+          >
+            <Download size={11} /> Export CSV
+          </button>
         </div>
       </div>
 
